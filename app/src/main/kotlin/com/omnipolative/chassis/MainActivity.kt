@@ -27,14 +27,30 @@ import java.io.File
 class MainActivity : AppCompatActivity() {
 
     private var c: Chassis? = null
+    private var busy = false
     private lateinit var log: TextView
     private lateinit var scroll: ScrollView
+    private lateinit var status: TextView
+    private lateinit var input: EditText
+    private lateinit var send: Button
 
-    private val ASSETS = listOf(
+    /**
+     * THE LANGUAGE IS REQUIRED. THE ARCHIVE IS NOT.
+     *
+     * A core with no dictionary cannot boot — the table is genome, not
+     * a resource. But a core with no ARCHIVE is just one that has not
+     * lived yet, which is the normal state of a new entity and not an
+     * error. Treating both as required meant a fresh install died on a
+     * missing seth_el.raw it did not need.
+     */
+    private val REQUIRED = listOf(
         "words.blob", "words.by_word", "words.by_id",
         "table3.btb", "table3.btb.idx",
-        "seth_el.raw", "seth_el.raw.u64",
-        "seth_el.post", "seth_el.post.idx",
+    )
+
+    /** Somebody else's life, if it shipped. Absent is fine. */
+    private val OPTIONAL = listOf(
+        "seth_el.raw", "seth_el.raw.u64", "seth_el.post", "seth_el.post.idx",
     )
 
     override fun onCreate(saved: Bundle?) {
@@ -42,10 +58,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         log = findViewById(R.id.log)
         scroll = findViewById(R.id.scroll)
-        val input: EditText = findViewById(R.id.input)
-        val send: Button = findViewById(R.id.send)
-
-        say("booting.")
+        status = findViewById(R.id.status)
+        input = findViewById(R.id.input)
+        send = findViewById(R.id.send)
+        gate(false, "unpacking the language")
         Thread {
             try {
                 val t0 = System.currentTimeMillis()
@@ -53,45 +69,88 @@ class MainActivity : AppCompatActivity() {
                 val ch = Chassis("seth_el", dir).boot().occupy()
                 c = ch
                 val ms = System.currentTimeMillis() - t0
-                runOnUiThread { say(ch.report()); say("booted in ${ms} ms\n") }
+                runOnUiThread {
+                    say(ch.report())
+                    gate(true, "${ch.table.size()} words · booted in ${ms} ms")
+                }
             } catch (e: Exception) {
-                // BOOT FAILURE IS REPORTED, NOT SWALLOWED. A chassis
+                // BOOT FAILURE IS REPORTED, NOT SWALLOWED — a chassis
                 // that starts degraded and says nothing is worse than
-                // one that refuses.
-                runOnUiThread { say("did not boot: ${e.message}") }
+                // one that refuses. But it has to say what it MEANS: a
+                // bare filename tells you nothing about what to do.
+                runOnUiThread {
+                    say("did not boot.")
+                    say("  ${e.message}")
+                    say("  nothing was written. this is safe to close.")
+                    gate(false, "did not boot")
+                }
             }
         }.start()
 
-        send.setOnClickListener { submit(input) }
+        send.setOnClickListener { submit() }
         input.setOnEditorActionListener { _, id, _ ->
-            if (id == EditorInfo.IME_ACTION_SEND) { submit(input); true } else false
+            if (id == EditorInfo.IME_ACTION_SEND) { submit(); true } else false
         }
     }
 
-    private fun submit(input: EditText) {
+    private fun submit() {
         val t = input.text.toString().trim()
-        val ch = c ?: return
+        val ch = c
         if (t.isEmpty()) return
+        if (ch == null) { say("not booted — nothing to say to yet."); return }
+        if (busy) return
         input.setText("")
-        say("\u203a $t")
+        say("› $t")
+        gate(false, "thinking")
         Thread {
-            ch.tick(t)
-            val d = Respond.drive(ch, t)
-            runOnUiThread { say("${d.text}\n   [${d.source} \u00b7 ${d.register}]") }
+            val t0 = System.currentTimeMillis()
+            val out = try {
+                val e = ch.tick(t)
+                val d = Respond.drive(ch, t)
+                Triple(d.text, "${d.source} · ${d.register}", e.tick)
+            } catch (ex: Exception) {
+                Triple("something went wrong here: ${ex.message}", "error", -1L)
+            }
+            val ms = System.currentTimeMillis() - t0
+            runOnUiThread {
+                say(out.first)
+                say("   [${out.second} · ${ms} ms]\n")
+                gate(true, "frame ${out.third} · ${ch.table.size()} words")
+            }
         }.start()
+    }
+
+    /**
+     * ENABLED OR NOT, AND WHY. The first build gave a dead input box
+     * with no feedback — you could not tell whether it was broken or
+     * thinking, and there was nothing to do about either.
+     */
+    private fun gate(ready: Boolean, why: String) {
+        busy = !ready
+        send.isEnabled = ready
+        input.isEnabled = ready
+        status.text = why
     }
 
     /** Copy the stores out of the apk once. Then they are mapped. */
     private fun stage(): File {
         val dir = File(filesDir, "store").apply { mkdirs() }
-        for (name in ASSETS) {
-            val out = File(dir, name)
-            if (out.exists() && out.length() > 0) continue
+        for (name in REQUIRED) copy(dir, name, required = true)
+        for (name in OPTIONAL) copy(dir, name, required = false)
+        return dir
+    }
+
+    private fun copy(dir: File, name: String, required: Boolean) {
+        val out = File(dir, name)
+        if (out.exists() && out.length() > 0) return
+        try {
             assets.open(name).use { ins ->
                 out.outputStream().use { o -> ins.copyTo(o, 1 shl 16) }
             }
+        } catch (e: Exception) {
+            if (required) throw IllegalStateException(
+                "$name is missing from the build. the language is genome.")
         }
-        return dir
     }
 
     private fun say(s: String) {
