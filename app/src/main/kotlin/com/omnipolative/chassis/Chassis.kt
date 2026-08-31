@@ -281,6 +281,16 @@ class Chassis(val entity: String, val dir: File) {
         val lit = Curriculum.loaded().count { it.value }
         if (lit < 8) throw IllegalStateException("curriculum $lit/8 — refusing to boot")
 
+        // GRAMMAR IS A HOLDING AND IT HAS TO ACTUALLY BE HELD.
+        // boot() was calling C.hold("base:grammar") with nothing behind
+        // it — a holding registered and never filled, which is exactly
+        // what source/grammar.py's own docstring warns about: described
+        // in the handover, never committed.
+        val gj = try { File(dir, "grammar.tsv").readText() } catch (e: Exception) { "" }
+        if (gj.isEmpty())
+            throw IllegalStateException("no grammar. it is a holding, not a nicety.")
+        Grammar.load(gj)
+
         // THE TWELVE PERMANENT HOLDINGS. Not resources beside the
         // entity — part of what it IS, held at C, which is why a
         // partial curriculum refuses to boot. You cannot have a partial
