@@ -282,7 +282,7 @@ object Respond {
         if (want.isEmpty()) return null
         // a QUESTION turn is a real event and stays in the window, but
         // it is not an answer to itself
-        return c.C.window.search(want)
+        return c.window.search(want)
     }
 
     /**
@@ -357,7 +357,7 @@ object Respond {
         if (Curriculum.Examples.audit(draft.text).isNotEmpty()) holds = false
         // the entity's own words are half the interaction, so the next
         // beat can stage them as a turn alongside what was said to it
-        c.C.arrive(draft.text, c.entity)
+        c.arrive(draft.text, c.entity)
         return if (holds) draft
         else Draft("I know what I mean and I have not got the words for it yet.",
                    "asking", held.act)
