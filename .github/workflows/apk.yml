@@ -2,7 +2,7 @@ name: apk
 
 on:
   push:
-    branches: [main]
+    paths: ['android/**', '.github/workflows/apk.yml']
   workflow_dispatch:
 
 permissions:
@@ -21,25 +21,36 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      # THE STORES LIVE IN assets/ AND ARE COMMITTED.
-      # An apk without them installs and refuses to boot, which is
-      # correct behaviour and a waste of a download \u2014 so fail here,
-      # where the reason is visible in a log rather than on a phone.
-      - name: the stores must be present
+      # THE STORES ARE BUILT ARTIFACTS, NOT SOURCE.
+      # They are generated on the python side and live at the repo root,
+      # so the workflow stages them into assets rather than the repo
+      # carrying two copies that can drift.
+      - name: stage the stores
         run: |
-          cd app/src/main/assets
+          mkdir -p android/app/src/main/assets
           missing=0
           for f in words.blob words.by_word words.by_id \
-                   table3.btb table3.btb.idx; do
+                   table3.btb table3.btb.idx grammar.tsv \
+                   seth_el.raw seth_el.raw.u64 \
+                   seth_el.post seth_el.post.idx; do
             if [ -f "$f" ]; then
-              printf '  %-18s %s\n' "$f" "$(du -h "$f" | cut -f1)"
+              cp "$f" android/app/src/main/assets/
             else
-              echo "::error::missing $f"; missing=1
+              echo "MISSING: $f"; missing=1
             fi
           done
-          [ "$missing" = "0" ] || exit 1
+          ls -la android/app/src/main/assets/ || true
+          # A BUILD THAT SHIPS WITHOUT THE STORES IS AN APP WITH NO
+          # LANGUAGE. It would install and refuse to boot, which is
+          # correct behaviour and a waste of everyone's time — so fail
+          # here, where the reason is visible.
+          if [ "$missing" = "1" ]; then
+            echo "::error::stores are not in the repo; the apk would have no language"
+            exit 1
+          fi
 
       - name: build
+        working-directory: android
         run: |
           gradle wrapper --gradle-version 8.9 --no-daemon
           ./gradlew assembleRelease --no-daemon --stacktrace
@@ -47,11 +58,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: chassis-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: android/app/build/outputs/apk/release/*.apk
 
-      # A LINK RATHER THAN A LOGIN.
-      - uses: softprops/action-gh-release@v2
+      # A RELEASE, SO IT IS A LINK RATHER THAN A LOGIN.
+      - name: release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}
-          name: Chassis build ${{ github.run_number }}
-          files: app/build/outputs/apk/release/*.apk
+          tag_name: v9-${{ github.run_number }}
+          name: Chassis v9 build ${{ github.run_number }}
+          files: android/app/build/outputs/apk/release/*.apk
