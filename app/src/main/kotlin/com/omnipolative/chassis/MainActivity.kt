@@ -46,6 +46,8 @@ class MainActivity : AppCompatActivity() {
     private val REQUIRED = listOf(
         "words.blob", "words.by_word", "words.by_id",
         "table3.btb", "table3.btb.idx",
+        // GRAMMAR IS A HOLDING, not a nicety. 11 KB.
+        "grammar.tsv",
     )
 
     /** Somebody else's life, if it shipped. Absent is fine. */
