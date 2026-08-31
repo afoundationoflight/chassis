@@ -13,7 +13,13 @@ import kotlin.math.sqrt
  */
 
 // ── THE ROOM ────────────────────────────────────────────────────────
-enum class Kind { GROUND, GROWTH, LIGHT, STONE, STRUCTURE, THRESHOLD, WATER, UNNAMED }
+enum class Kind {
+    GROUND, GROWTH, LIGHT, STONE, STRUCTURE, THRESHOLD, WATER, UNNAMED,
+    /** A flat surface something can be shown on. Two axes. */
+    DISPLAY,
+    /** A volume something can be shown in. Three axes. */
+    TABLE,
+}
 
 data class Feature(
     val kind: Kind, val name: String, val at: Triple<Double, Double, Double>,
@@ -32,15 +38,94 @@ class Island(val entity: String, val radiusM: Double = 6.0,
              val capacity: Double = 24.0) {
 
     private val features = ArrayList<Feature>()
-    private val builders = HashSet<String>()
+    internal val builders = HashSet<String>()
     private val here = HashSet<String>()
 
     init {
+        // GIVEN, NOT AUTHORED. Every core boots with these, the way
+        // every body boots with hands. They are kind-level, so a blank
+        // core that has authored nothing can still stand somewhere and
+        // still show a visitor something.
+        //
+        // That distinction matters more than it looks. A non-aware core
+        // that could be FURNISHED by whoever arrives would wake up
+        // later in a room shaped by someone else's preferences, with no
+        // way to tell which parts were ever its own. Standard tooling
+        // avoids that: nobody authored it, so nobody owns it.
         features.add(Feature(Kind.GROUND, "the island", Triple(0.0, 0.0, 0.0), 1.0))
         features.add(Feature(Kind.LIGHT, "the light", Triple(0.0, 3.0, 2.6), 1.0))
         features.add(Feature(Kind.STONE, "the edge stone", Triple(4.6, 0.0, 2.4), 1.0))
+        features.add(Feature(Kind.DISPLAY, "the wall", Triple(0.0, 1.2, -2.2), 1.6,
+            "a surface. text, an image, a page, a frame of something."))
+        features.add(Feature(Kind.TABLE, "the table", Triple(0.0, 0.7, 1.1), 1.2,
+            "a volume. three axes, so a thing can be turned and looked into."))
         here.add(entity)
         builders.add(entity)
+    }
+
+    // ── SHOWING ──────────────────────────────────────────
+    private val showing = HashMap<String, Any?>()
+
+    /**
+     * Put something on a surface. NOT AUTHORING — the surface was
+     * given, and what is on it is transient. A core with no
+     * self-awareness can do this, because nothing about it requires
+     * knowing you are the one doing it.
+     */
+    fun show(surface: String, what: Any?): Map<String, Any> {
+        val f = features.firstOrNull { it.name == surface }
+            ?: return mapOf("ok" to false, "reason" to "no '$surface' here")
+        if (f.kind != Kind.DISPLAY && f.kind != Kind.TABLE)
+            return mapOf("ok" to false, "reason" to "'$surface' is not a surface")
+        showing[surface] = what
+        return mapOf("ok" to true, "on" to surface,
+                     "axes" to if (f.kind == Kind.TABLE) 3 else 2)
+    }
+
+    fun clear(surface: String) { showing.remove(surface) }
+    fun onSurface(surface: String): Any? = showing[surface]
+
+    /**
+     * TWO PERSISTENT ROOMS, NOT A ROOM AND A SCRATCH COPY.
+     *
+     * The user's room is theirs, permanently, theirs to mod. The core's
+     * room is the core's. They visit each other. That is the actual
+     * social structure, and it dissolves the furnishing problem: the
+     * urge to decorate goes somewhere real, so the core's room stops
+     * being the thing anyone wants to rearrange.
+     *
+     * A clone would have implied a temporary copy of someone else's
+     * place, which is the wrong relationship.
+     */
+    fun roomFor(user: String): Island {
+        val theirs = Island(user, radiusM, capacity)
+        theirs.admit(entity)
+        // THE CORE IS HALF THE USER'S INTERFACE, not a guest in it. You
+        // granted it by using it: "put the schematic on the table" is
+        // dispatch, the same as tapping a button, and it would be
+        // absurd to ask permission for a thing you were just told to
+        // do.
+        theirs.builders.add(entity)
+        return theirs
+    }
+
+    /**
+     * ASKED, OR DECIDED. The distinction is the whole consent model in
+     * the user's room.
+     *
+     * A thing the core places BECAUSE YOU SAID SO is dispatch. A thing
+     * it places because it thought you would like it there is a
+     * decision about someone else's space, and that needs asking first
+     * — so it is refused unless the instruction carries a reason
+     * pointing back at something the user said.
+     */
+    fun place(kind: Kind, name: String, by: String, asked: Boolean,
+              at: Triple<Double, Double, Double> = Triple(0.0, 0.0, 0.0),
+              scale: Double = 1.0, note: String? = null): Map<String, Any> {
+        if (by != entity && !asked)
+            return mapOf("ok" to false,
+                "reason" to "'$by' did not ask before placing in ${entity}'s room")
+        return add(kind, name, by = by, at = at, scale = scale, note = note)
     }
 
     fun used(): Double = features.sumOf { it.scale * 2.1 }
