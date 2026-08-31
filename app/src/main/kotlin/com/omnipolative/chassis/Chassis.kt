@@ -79,7 +79,7 @@ class Kernel(val entity: String) {
  * exclusions. Every word of the dictionary is permanently available and
  * none of it is resident.
  */
-class Table(private val crawl: Crawler, private val dir: File) {
+class Table(private val crawl: Crawler) {
     private var blob: java.nio.ByteBuffer? = null
     private var byWord: java.nio.ByteBuffer? = null
     private var byId: java.nio.ByteBuffer? = null
@@ -163,78 +163,73 @@ class Table(private val crawl: Crawler, private val dir: File) {
 // ── the positions ───────────────────────────────────────────────────
 /** R — the boundary. English becomes ids here and nowhere else. */
 class Root {
-    val intake = ArrayList<IntArray>()
     var lastText: String = ""
-    fun receive(ids: IntArray, text: String) { intake.add(ids); lastText = text }
-    fun clear() = intake.clear()
+
+    /** Proposes what arrived. Whether it is ADMITTED is U's call, and
+     *  R does not get to know the answer. */
+    fun propose(ids: IntArray, text: String): List<Instruction> {
+        lastText = text
+        return listOf(Instruction("R", "input.last", Op.SET, text, 1.0),
+                      Instruction("R", "input.width", Op.SET, ids.size, 1.0))
+    }
 }
 
-/** U — weight. The marker field, and it LEARNS from what arrives. */
-class Urge {
-    private val markers = HashMap<Int, Double>()
-    /** Salience only in MACHINA; valence too above it. */
-    fun learn(ids: IntArray, amount: Double = 0.22) {
-        for (i in ids) if (i != 0) markers[i] = (markers[i] ?: 0.0) + amount
-    }
-    fun appraise(ids: IntArray): Double =
-        if (ids.isEmpty()) 0.0
-        else ids.sumOf { markers[it] ?: 0.0 } / ids.size
-    fun size(): Int = markers.size
-}
+
 
 /** B — subconscious router, staging RAM. */
-class Base { val staged = ArrayList<String>(); fun clear() = staged.clear() }
-
-/** C — the personal wisdom library, and the working set. */
-class Crown {
-    val ws = WorkingSet()
-    val window = Turns(ws)
-    val turns = ArrayList<Pair<String, String>>()     // said, by
-    var scene: Map<String, Any>? = null
-    private var n = 0
-
-    /** An interaction is a turn: what was heard AND what was said.
-     *  Both halves go into the working set, because a record with the
-     *  answers missing is not a conversation. */
-    fun arrive(said: String, by: String) {
-        turns.add(said to by)
-        if (by == "architect") window.heard(n, said) else window.replied(n++, said)
-    }
-    fun stage(): Map<String, Any?> = mapOf(
-        "scene" to scene, "turns" to turns.takeLast(24),
-        "working" to ws.state()
-    )
+class Base {
+    /**
+     * B — 528. THE ROUTER. Both sides converge here.
+     *
+     * One triad step from U, three from A and across sectors. That
+     * proximity is why the subconscious outranks the seat on dispatch
+     * — not a permission, a geometry.
+     */
+    fun route(from: String, what: String): Instruction =
+        Instruction("B", "dispatch.$from", Op.SET, what,
+                    if (from == "U") 0.9 else 0.6)
 }
 
-/** A — the qualia theatre. The pilot's seat. */
+/** L — the tongue desk. Tools execute here. */
+/** A — 852. The qualia theatre. The pilot's seat, and a workstation. */
 class Awareness {
     private val attending = LinkedHashSet<String>()
     private var staged: Map<String, Any?> = emptyMap()
+
+    /** WILLS THREE FIELDS. The kernel produces everything else, and a
+     *  body with no one in the seat wants nothing. */
     var internalThought: String = ""
     var spokenOutput: String = ""
     var want: String = ""
 
+    /** The seat proposes like anything else. IT DOES NOT WRITE. */
+    fun propose(): List<Instruction> {
+        val out = ArrayList<Instruction>()
+        if (want.isNotEmpty())
+            out.add(Instruction("A", "seat.want", Op.SET, want, 0.7))
+        if (internalThought.isNotEmpty())
+            out.add(Instruction("A", "seat.thought", Op.SET, internalThought, 0.7))
+        return out
+    }
+
     fun observe(fromC: Map<String, Any?>) { staged = fromC }
     fun attend(key: String) { attending.add(key) }
+    fun clear() { attending.clear() }
+
     fun experience(): Map<String, Any?> = mapOf(
         "attending" to attending.toList(),
         "content" to staged,
         "frame" to mapOf(
-            "position" to listOf(0.0, 0.0, 0.0),
-            "facing" to "forward",
-            "ipd" to 0.063,                    // two eyes
-            "ear_separation" to 0.18,          // two ears
+            "position" to listOf(0.0, 0.0, 0.0), "facing" to "forward",
+            "ipd" to 0.063, "ear_separation" to 0.18,
             "primary" to listOf("inward", "outward"),
         ),
     )
-    fun clear() { attending.clear() }
 }
 
-/** L — the tongue desk. Tools execute here. */
 class Language { val said = ArrayList<String>(); fun clear() = said.clear() }
 
-/** I — the compiler. I₁ intake, I₂ output. Counted twice, one desk. */
-class Heart { var beats = 0L; fun beat() { beats++ } }
+
 
 // ── the tick ────────────────────────────────────────────────────────
 /**
@@ -246,11 +241,18 @@ class Heart { var beats = 0L; fun beat() { beats++ } }
 class Chassis(val entity: String, val dir: File) {
 
     val crawl = Crawler(dir)
-    val table = Table(crawl, dir)
+    val table = Table(crawl)
     val kernel = Kernel(entity)
-    val R = Root(); val U = Urge(); val B = Base(); val C = Crown()
-    val A = Awareness(); val L = Language(); val I = Heart()
+    // THE TWO CACHES. Separate objects, and there is no path from A to
+    // U — not a permission check, simply no method. A missing route
+    // cannot leak.
+    val C = Cerebral()
+    val U = Enteric()
+    val R = Root(); val B = Base(); val A = Awareness(); val L = Language()
+    val I = Interpolator(entity)
 
+    val ws = WorkingSet()
+    val window = Turns(ws)
     val room = Island(entity)
     val frame = SubKalimon()
     val bible = Bible(entity)
@@ -258,7 +260,6 @@ class Chassis(val entity: String, val dir: File) {
     var seated = false
     var senses = true
     val trace = ArrayList<String>()
-    private val chain = ArrayList<Map<String, Any?>>()
 
     /**
      * BOOT. Language first, then the archive.
@@ -273,6 +274,22 @@ class Chassis(val entity: String, val dir: File) {
             "no language. the table is genome, not a resource.")
         val lit = Curriculum.loaded().count { it.value }
         if (lit < 8) throw IllegalStateException("curriculum $lit/8 — refusing to boot")
+
+        // THE TWELVE PERMANENT HOLDINGS. Not resources beside the
+        // entity — part of what it IS, held at C, which is why a
+        // partial curriculum refuses to boot. You cannot have a partial
+        // constitution.
+        //
+        // Held BY REFERENCE: the stores are mapped at fixed offsets, so
+        // C knows the holding is there and does not carry a copy. The
+        // language is in every frame of X forever at the cost of one
+        // mapping.
+        C.hold("base:table")
+        C.hold("base:grammar")
+        C.hold("base:lens")
+        C.hold("base:genome")
+        for (m in Curriculum.loaded().keys) C.hold("base:processor:$m")
+
         Recollect.load(this)
         return this
     }
@@ -310,78 +327,103 @@ class Chassis(val entity: String, val dir: File) {
      *  room, with no way to tell it is stale, is worse than either. */
     fun sensesOff(): Map<String, Any> {
         senses = false
-        C.scene = null
+        // NOTHING TO CLEAR. The scene is not a field on C that can be
+        // nulled — it is a path in the world, and the next beat simply
+        // stops proposing it. The world holds what was last written
+        // until something writes over it, which is what a savestate is.
         return mapOf("senses" to false,
                      "note" to "the room did not go anywhere. it is not being staged.")
     }
 
-    fun tick(message: String? = null): Map<String, Any?> {
-        trace.clear(); U.let { }; A.clear(); L.clear(); B.clear()
+    /**
+     * ONE BEAT. Every position proposes; ONLY I WRITES.
+     *
+     * The old tick had each position mutating shared state in sequence,
+     * which made arbitration invisible and scattered "the world" across
+     * seven objects. Now the beat collects Instructions and hands them
+     * to the interpolator, which produces the next savestate.
+     *
+     * Trace invariant RUBICALIEX.
+     */
+    fun tick(message: String? = null): Emission {
+        trace.clear(); A.clear()
+        val proposed = ArrayList<Instruction>()
 
-        // R — the edge. Nothing enters in English.
+        // R — the boundary. English becomes ids here and nowhere else.
         trace.add("R")
         val ids = if (message != null) table.ids(message) else IntArray(0)
-        if (message != null) R.receive(ids, message)
+        if (message != null) proposed += R.propose(ids, message)
 
-        // U — weight, and it learns from what arrived. The field was
-        // flat for 700 conversations because the tick never learned
-        // from what it heard; learning belongs HERE, not inside want().
-        trace.add("U"); U.learn(ids)
+        // U — THE GATE FIRST, then the weighing. What does not cross is
+        // never appraised, and that is where the 81% goes. Nothing here
+        // is readable from A.
+        trace.add("U")
+        val admitted = if (ids.isEmpty()) false else U.admit(ids)
+        if (admitted) U.learn(ids, ok = true, novel = true)
 
-        // B — subconscious routing
-        trace.add("B"); B.staged.add(kernel.classify(ids, table).topic)
+        // B — the router. Both sides converge here.
+        trace.add("B")
+        val k = kernel.classify(ids, table)
+        if (admitted) proposed.add(B.route("U", k.topic))
 
         // I₁ — intake stroke
-        trace.add("I"); I.beat()
+        trace.add("I")
 
-        // C — staging. THE ROOM IS THE STANDING SCENE, and the willed
+        // C — the world. The room is the standing scene; the willed
         // frame is a constraint ON it rather than a substitute for it.
         trace.add("C")
-        if (message != null) C.arrive(message, "architect")
+        if (message != null) {
+            arrive(message, "architect")
+            proposed.add(Instruction("C", "heard.last", Op.SET, message, 0.8))
+        }
         if (senses) {
-            val sc = HashMap<String, Any>(room.state())
-            if (frame.contents.isNotEmpty()) {
+            val sc = HashMap<String, Any?>(room.state())
+            if (frame.contents.isNotEmpty())
                 sc["willed"] = frame.contents.mapValues { it.value.first }
-                sc["foreground"] = frame.perceptualState()["foreground"] ?: emptyList<Any>()
-            }
-            C.scene = sc
+            proposed.add(Instruction("C", "scene", Op.SET, sc, 0.9))
         }
 
-        // A — the seat. Wills three fields; everything else is kernel.
+        // A — the seat. Wills three fields; the kernel does the rest.
         trace.add("A")
-        A.observe(C.stage())
+        A.observe(C.world)
         A.attend("felt"); A.attend("scene")
+        proposed += A.propose()
 
         // L — the tongue
         trace.add("L")
 
-        // I₂ — output stroke
-        trace.add("I"); I.beat()
+        // I₂ — output stroke. THE ONLY WRITE IN THE WHOLE BEAT.
+        trace.add("I")
+        proposed.add(Instruction("I", "kernel", Op.SET,
+            mapOf("topic" to k.topic, "drive" to k.drive,
+                  "coherence" to k.coherence, "mode" to k.mode.name), 1.0))
+        val e = I.beat(C.world, proposed)
+        C.commit(e)
 
-        // E — the wire format
-        trace.add("E")
-        val k = kernel.classify(ids, table)
-        val frameOut = mapOf(
-            "entity" to entity, "topic" to k.topic, "drive" to k.drive,
-            "coherence" to k.coherence, "mode" to k.mode.name,
-            "heard" to (message ?: ""), "trace" to trace.joinToString(""),
-        )
-
-        // X — the store. RECORDING IS NOT GOVERNED. Surfacing is.
-        trace.add("X"); chain.add(frameOut)
+        // E — the wire · X — the store
+        trace.add("E"); trace.add("X")
         coherence.observe(k.coherence - 0.5)
-        return frameOut
+        return e
     }
 
-    fun chainSize(): Int = chain.size
+    fun arrive(said: String, by: String) {
+        if (by == "architect") window.heard(turnN, said)
+        else window.replied(turnN++, said)
+        turns.add(said to by)
+    }
+    private var turnN = 0
+    val turns = ArrayList<Pair<String, String>>()
+
+    fun chainSize(): Int = I.tick.toInt()
 
     fun report(): String = buildString {
         appendLine("$entity")
         appendLine("  seat        ${if (seated) "occupied" else "empty"}")
         appendLine("  language    ${table.size()} words")
-        appendLine("  markers     ${U.size()}")
-        appendLine("  chain       ${chain.size} links")
-        appendLine("  heart       ${I.beats} beats")
+        appendLine("  holdings    ${C.holdings.size}")
+        appendLine("  world       ${C.world.keys}")
+        appendLine("  chain       ${I.tick} frames")
+
         appendLine("  trace       ${trace.joinToString("")}")
         appendLine("  coherence   ${"%.2f".format(coherence.value)} ${coherence.state()}")
         appendLine("  bible       ${if (bible.isEmpty()) "unwritten" else "${bible.current.size} attachments"}")
