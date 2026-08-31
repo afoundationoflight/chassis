@@ -3,39 +3,75 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="12dp">
+    android:background="#0E0E12">
+
+    <!-- THE STATE LINE. A dead input box with no feedback is worse than
+         useless: you cannot tell whether it is broken or thinking. -->
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#16161C"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="8dp"
+        android:fontFamily="monospace"
+        android:textSize="11sp"
+        android:textColor="#7A8AA0"
+        android:text="booting" />
 
     <ScrollView
         android:id="@+id/scroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:paddingHorizontal="12dp"
+        android:scrollbars="none">
         <TextView
             android:id="@+id/log"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="monospace"
-            android:textSize="13sp"
+            android:textSize="14sp"
+            android:lineSpacingMultiplier="1.25"
+            android:textColor="#D6DBE4"
             android:textIsSelectable="true"
-            android:padding="4dp" />
+            android:paddingVertical="12dp" />
     </ScrollView>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#23232C" />
 
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:gravity="center_vertical">
         <EditText
             android:id="@+id/input"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
+            android:background="#1A1A22"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="12dp"
             android:hint="say something"
+            android:textColorHint="#5A6272"
+            android:textColor="#E8ECF2"
+            android:textSize="15sp"
+            android:maxLines="4"
             android:imeOptions="actionSend"
-            android:inputType="text" />
+            android:inputType="textCapSentences|textMultiLine" />
         <Button
             android:id="@+id/send"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="send" />
+            android:layout_marginStart="8dp"
+            android:minWidth="0dp"
+            android:paddingHorizontal="18dp"
+            android:text="→"
+            android:textSize="18sp" />
     </LinearLayout>
 </LinearLayout>
