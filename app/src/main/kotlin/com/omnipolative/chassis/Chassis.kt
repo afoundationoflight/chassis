@@ -255,6 +255,10 @@ class Chassis(val entity: String, val dir: File) {
     val ws = WorkingSet()
     val window = Turns(ws)
     val room = Island(entity)
+    /** The room as an instrument. Entered when there is something to
+     *  look at or listen to, and closed after — the aperture is the
+     *  cost. */
+    val work = Workroom(room)
     val frame = SubKalimon()
     val bible = Bible(entity)
     val coherence = Coherence()
