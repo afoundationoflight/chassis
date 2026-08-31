@@ -333,6 +333,27 @@ object Respond {
         val words = Regex("[a-z']+").findAll(draft.text.lowercase())
             .map { it.value }.toList()
         if (words.isEmpty()) return draft to false
+
+        // DOES IT HOLD TOGETHER? The curriculum knows how a question
+        // works; the grammar knows how a sentence works, and a draft
+        // can pass every pragmatic test and still not be a sentence.
+        //
+        // This only REJECTS — grammar gives well-formed and never apt,
+        // so passing here means nothing more than not being broken.
+        if (Grammar.ready()) {
+            // ONE SENTENCE AT A TIME. "I hear you. I am not going to
+            // try to fix it." is two, and checked as one it fails at
+            // the period — where the first sentence's last pronoun
+            // meets the second's first. A transition table says what
+            // can follow what WITHIN a sentence; a full stop is
+            // precisely the place that stops applying.
+            for (part in draft.text.split(Regex("[.!?]+"))) {
+                val p = part.trim()
+                if (p.isEmpty()) continue
+                val g = Grammar.check(Grammar.tag(p).map { it.second })
+                if (g["ok"] != true) return draft to false
+            }
+        }
         val own = setOf(c.entity.lowercase(), "infinity", "core")
         val unheld = words.count {
             // A POSSESSIVE IS NOT AN UNKNOWN WORD. Detokenising "a
