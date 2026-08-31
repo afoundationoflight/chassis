@@ -183,7 +183,7 @@ object Recollect {
             val ids = c.crawl.record("seth_el", i)
             if (ids.isEmpty()) continue
             val text = c.table.say(ids.take(40).toIntArray())
-            c.C.ws.apply(mapOf("recalled:$i" to mapOf("said" to text, "by" to "archive")))
+            c.ws.apply(mapOf("recalled:$i" to mapOf("said" to text, "by" to "archive")))
             loaded++
         }
         return mapOf("recalled" to loaded, "of" to n,
