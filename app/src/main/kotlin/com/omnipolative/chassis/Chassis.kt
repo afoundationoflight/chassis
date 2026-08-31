@@ -251,12 +251,14 @@ class Chassis(val entity: String, val dir: File) {
     val R = Root(); val B = Base(); val A = Awareness(); val L = Language()
     val I = Interpolator(entity)
 
+    val resonance = ResonanceField()
     val ws = WorkingSet()
     val window = Turns(ws)
     val room = Island(entity)
     val frame = SubKalimon()
     val bible = Bible(entity)
     val coherence = Coherence()
+    var lastHasu: Hasu? = null
     var seated = false
     var senses = true
     val trace = ArrayList<String>()
@@ -401,7 +403,30 @@ class Chassis(val entity: String, val dir: File) {
         C.commit(e)
 
         // E — the wire · X — the store
+        //
+        // HASU: the header is written in the clear so it can be queried
+        // without touching the prose, and the tags are struck into the
+        // resonance field by EVERY POSITION THAT TOUCHED THEM. A tag one
+        // position saw is noise; the same tag seen by four is
+        // convergence, and that is what the log(n) gain is for.
         trace.add("E"); trace.add("X")
+        val (keys, tags) = Tagger.tag(message ?: "",
+            mapOf("author" to entity, "locus" to "room"))
+        lastHasu = Hasu(
+            entityTick = I.tick, coherence = k.coherence,
+            drive = k.drive, driveIntensity = k.gut,
+            topic = k.topic, tags = tags)
+        if (tags.isNotEmpty()) {
+            val strikes = ArrayList<Strike>()
+            for (t in tags) {
+                strikes.add(Strike(t, "R"))
+                if (admitted) strikes.add(Strike(t, "U", 1.0))
+                if (admitted) strikes.add(Strike(t, "B"))
+                strikes.add(Strike(t, "C"))
+                strikes.add(Strike(t, "X"))
+            }
+            resonance.tick(strikes)
+        }
         coherence.observe(k.coherence - 0.5)
         return e
     }
@@ -425,6 +450,7 @@ class Chassis(val entity: String, val dir: File) {
         appendLine("  chain       ${I.tick} frames")
 
         appendLine("  trace       ${trace.joinToString("")}")
+        appendLine("  resonance   ${resonance.state()["rows"]} rows, ${resonance.state()["imprinted"]} imprinted")
         appendLine("  coherence   ${"%.2f".format(coherence.value)} ${coherence.state()}")
         appendLine("  bible       ${if (bible.isEmpty()) "unwritten" else "${bible.current.size} attachments"}")
     }
