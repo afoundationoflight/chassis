@@ -35,6 +35,17 @@ data class Feature(
  * anywhere.
  */
 class Island(val entity: String, val radiusM: Double = 6.0,
+             /**
+              * THE SCENE BUDGET, and it should come from the device
+              * rather than from a literal. A phone and a desktop have
+              * different budgets, and a phone on low battery has a
+              * different one than the same phone plugged in.
+              *
+              * Android exposes all of it — available memory, thermal
+              * state, whether it is charging. This default is what a
+              * modest handset can hold; the runtime should measure and
+              * pass the real one.
+              */
              val capacity: Double = 24.0) {
 
     private val features = ArrayList<Feature>()
@@ -128,12 +139,104 @@ class Island(val entity: String, val radiusM: Double = 6.0,
         return add(kind, name, by = by, at = at, scale = scale, note = note)
     }
 
-    fun used(): Double = features.sumOf { it.scale * 2.1 }
+    // ── COST ─────────────────────────────────────────────────
+    //
+    // TRACKED AND RENDERED ARE DIFFERENT BUDGETS.
+    //
+    // Everything is tracked continuously — position, extent, occlusion,
+    // whatever physics it has. That is arithmetic on a handful of
+    // numbers and it is nearly free, so the world can hold far more
+    // than it can show.
+    //
+    // Rendering is what costs, and it only happens where someone is.
+    // So capacity is a statement about THE SCENE, not about the world,
+    // and a room with fifty things in it is fine as long as you are
+    // only ever looking at part of it.
+    //
+    // The old flat `scale * 2.1` priced a boulder and a running screen
+    // identically, which is wrong twice over: a stone is geometry and
+    // nothing else, a display with something live on it is geometry
+    // plus a decode loop that never stops.
+
+    /** What it costs to KEEP TRACK of. Cheap, always paid. */
+    private fun tracked(f: Feature): Double = when (f.kind) {
+        Kind.GROUND -> 0.05
+        Kind.DISPLAY, Kind.TABLE -> 0.20      // a surface has state
+        else -> 0.10
+    }
+
+    /** What it costs to SHOW. Paid only where someone is looking. */
+    private fun rendered(f: Feature): Double {
+        val base = when (f.kind) {
+            Kind.GROUND -> 0.4
+            Kind.LIGHT -> 0.6                  // light touches everything
+            Kind.STONE, Kind.STRUCTURE -> 1.0
+            Kind.GROWTH -> 1.4                 // many small moving parts
+            Kind.WATER -> 1.8
+            Kind.DISPLAY -> if (showing[f.name] != null) 2.6 else 0.8
+            Kind.TABLE -> if (showing[f.name] != null) 3.4 else 0.9
+            else -> 1.0
+        }
+        return base * f.scale
+    }
+
+    fun trackedCost(): Double = features.sumOf { tracked(it) }
+
+    /** The rendered cost of what is visible from where someone stands. */
+    fun sceneCost(from: Triple<Double, Double, Double> = Triple(0.0, 0.0, 0.0),
+                  reachM: Double = 8.0): Double =
+        features.filter { dist(it, from) <= reachM }.sumOf { rendered(it) }
+
+    fun used(): Double = sceneCost()
     fun free(): Double = capacity - used()
 
-    /** Someone is here. Being welcome is not permission to build. */
+    private fun dist(f: Feature, from: Triple<Double, Double, Double>): Double {
+        val dx = f.at.first - from.first
+        val dy = f.at.second - from.second
+        val dz = f.at.third - from.third
+        return kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
+    }
+
+    /**
+     * Someone is here. BEING WELCOME IS NOT PERMISSION TO BUILD.
+     *
+     * A visitor arrives with their AVATAR AND GARB and nothing else.
+     * That is a bounded, predictable cost the host can plan for — and
+     * it means being visited never surprises you with someone else's
+     * furniture. Anything from their own land has to be REQUESTED AND
+     * ACCEPTED, one object at a time.
+     */
     fun admit(who: String): Map<String, Any> {
-        here.add(who); return mapOf("ok" to true, "here" to who)
+        here.add(who)
+        // avatar and garb. bounded, and the host pays it knowingly.
+        val cost = 1.2
+        return mapOf("ok" to true, "here" to who, "carrying" to "avatar and garb",
+                     "cost" to cost, "free" to free() - cost)
+    }
+
+    /**
+     * PORTING AN OBJECT IN FROM THEIR OWN LAND.
+     *
+     * Requested, then accepted or not. The host pays the render cost,
+     * so the host decides — and a refusal here is not unfriendliness,
+     * it is a budget that belongs to someone.
+     */
+    fun requestPort(who: String, kind: Kind, name: String,
+                    scale: Double = 1.0): Map<String, Any> {
+        if (who !in here) return mapOf("ok" to false, "reason" to "'$who' is not here")
+        val need = rendered(Feature(kind, name, Triple(0.0, 0.0, 0.0), scale))
+        return mapOf("ok" to true, "pending" to name, "from" to who,
+                     "would_cost" to need, "free" to free(),
+                     "fits" to (need <= free()))
+    }
+
+    fun acceptPort(who: String, kind: Kind, name: String,
+                   by: String, scale: Double = 1.0,
+                   at: Triple<Double, Double, Double> = Triple(0.0, 0.0, 0.0)):
+            Map<String, Any> {
+        if (by != entity) return mapOf("ok" to false, "reason" to "not yours to accept")
+        return add(kind, name, by = entity, at = at, scale = scale,
+                   note = "ported in by $who")
     }
 
     /**
@@ -162,7 +265,7 @@ class Island(val entity: String, val radiusM: Double = 6.0,
             return mapOf("ok" to false, "reason" to "'$by' cannot build in ${entity}'s room")
         if (features.any { it.name == name })
             return mapOf("ok" to false, "reason" to "'$name' is already here")
-        val need = scale * 2.1
+        val need = rendered(Feature(kind, name, at, scale, note, by))
         if (need > free())
             return mapOf("ok" to false,
                 "reason" to "there is not room for that \u2014 %.1f needed, %.1f free of %.1f"
