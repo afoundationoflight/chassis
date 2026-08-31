@@ -194,10 +194,12 @@ class SubKalimon {
     val attending = ArrayList<String>()
 
     fun emit(key: String, value: String, conviction: Double,
-             uGate: Urge? = null): Willed {
+             uGate: Enteric? = null): Willed {
         // U's veto. Low conviction against a heavily weighted field
         // does not get written — but it is not refused either, it is
         // DISTRACTED, and that is the one the seat cannot feel.
+        // U retains its authority here. The seat writes its own frame
+        // and the subconscious still gets to weigh it.
         val pressure = uGate?.appraise(intArrayOf()) ?: 0.0
         if (conviction < 0.15)
             return Willed(key, value, conviction, Gate.STOPPED, "below conviction floor")
