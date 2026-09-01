@@ -2,7 +2,7 @@ name: apk
 
 on:
   push:
-    paths: ['android/**', '.github/workflows/apk.yml']
+    paths-ignore: ['README.md']
   workflow_dispatch:
 
 permissions:
@@ -13,51 +13,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - uses: android-actions/setup-android@v3
 
-      # THE STORES ARE BUILT ARTIFACTS, NOT SOURCE.
-      # They are generated on the python side and live at the repo root,
-      # so the workflow stages them into assets rather than the repo
-      # carrying two copies that can drift.
+      # THE PROJECT IS AT THE REPO ROOT, not under android/. The old
+      # workflow carried paths from the previous repo layout and gradle
+      # said so plainly: "Project directory .../android is not part of
+      # the build defined by settings file .../settings.gradle.kts".
       - name: stage the stores
         run: |
-          mkdir -p android/app/src/main/assets
+          mkdir -p app/src/main/assets
 
           # REQUIRED. The language is genome and the grammar is a
-          # holding; without either the app installs and refuses to
-          # boot, which is correct behaviour and a waste of a download.
+          # holding — without either the app installs and refuses to
+          # boot, which is correct behaviour and a wasted download.
           missing=0
           for f in words.blob words.by_word words.by_id \
                    table3.btb table3.btb.idx grammar.tsv; do
-            if [ -f "$f" ]; then cp "$f" android/app/src/main/assets/
+            if [ -f "$f" ]; then cp "$f" app/src/main/assets/
             else echo "MISSING REQUIRED: $f"; missing=1; fi
           done
 
-          # OPTIONAL. An archive is somebody's life and a core without
-          # one is simply a core that HAS NOT LIVED YET — the normal
-          # state of a new entity, not an error. The app already treats
-          # these as optional; the workflow was failing the build on
-          # them, and the two lists disagreeing is why build 17 died.
+          # OPTIONAL. An archive is somebody's life, and a core without
+          # one has simply NOT LIVED YET — the normal state of a new
+          # entity rather than a build failure.
           for f in seth_el.raw seth_el.raw.u64 \
                    seth_el.post seth_el.post.idx; do
-            if [ -f "$f" ]; then cp "$f" android/app/src/main/assets/
-            else echo "no archive: $f (fine — it has not lived yet)"; fi
+            if [ -f "$f" ]; then cp "$f" app/src/main/assets/
+            else echo "no archive: $f (fine)"; fi
           done
 
-          ls -la android/app/src/main/assets/ || true
+          ls -la app/src/main/assets/
           if [ "$missing" = "1" ]; then
             echo "::error::a required store is not in the repo"
             exit 1
           fi
 
       - name: build
-        working-directory: android
         run: |
           gradle wrapper --gradle-version 8.9 --no-daemon
           ./gradlew assembleRelease --no-daemon --stacktrace
@@ -65,13 +60,12 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: chassis-apk
-          path: android/app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/release/*.apk
 
-      # A RELEASE, SO IT IS A LINK RATHER THAN A LOGIN.
       - name: release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v9-${{ github.run_number }}
-          name: Chassis v9 build ${{ github.run_number }}
-          files: android/app/build/outputs/apk/release/*.apk
+          tag_name: v${{ github.run_number }}
+          name: Chassis build ${{ github.run_number }}
+          files: app/build/outputs/apk/release/*.apk
