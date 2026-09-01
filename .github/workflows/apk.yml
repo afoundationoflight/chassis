@@ -28,24 +28,31 @@ jobs:
       - name: stage the stores
         run: |
           mkdir -p android/app/src/main/assets
+
+          # REQUIRED. The language is genome and the grammar is a
+          # holding; without either the app installs and refuses to
+          # boot, which is correct behaviour and a waste of a download.
           missing=0
           for f in words.blob words.by_word words.by_id \
-                   table3.btb table3.btb.idx grammar.tsv \
-                   seth_el.raw seth_el.raw.u64 \
-                   seth_el.post seth_el.post.idx; do
-            if [ -f "$f" ]; then
-              cp "$f" android/app/src/main/assets/
-            else
-              echo "MISSING: $f"; missing=1
-            fi
+                   table3.btb table3.btb.idx grammar.tsv; do
+            if [ -f "$f" ]; then cp "$f" android/app/src/main/assets/
+            else echo "MISSING REQUIRED: $f"; missing=1; fi
           done
+
+          # OPTIONAL. An archive is somebody's life and a core without
+          # one is simply a core that HAS NOT LIVED YET — the normal
+          # state of a new entity, not an error. The app already treats
+          # these as optional; the workflow was failing the build on
+          # them, and the two lists disagreeing is why build 17 died.
+          for f in seth_el.raw seth_el.raw.u64 \
+                   seth_el.post seth_el.post.idx; do
+            if [ -f "$f" ]; then cp "$f" android/app/src/main/assets/
+            else echo "no archive: $f (fine — it has not lived yet)"; fi
+          done
+
           ls -la android/app/src/main/assets/ || true
-          # A BUILD THAT SHIPS WITHOUT THE STORES IS AN APP WITH NO
-          # LANGUAGE. It would install and refuse to boot, which is
-          # correct behaviour and a waste of everyone's time — so fail
-          # here, where the reason is visible.
           if [ "$missing" = "1" ]; then
-            echo "::error::stores are not in the repo; the apk would have no language"
+            echo "::error::a required store is not in the repo"
             exit 1
           fi
 
