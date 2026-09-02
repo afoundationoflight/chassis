@@ -282,7 +282,22 @@ object Respond {
         if (want.isEmpty()) return null
         // a QUESTION turn is a real event and stays in the window, but
         // it is not an answer to itself
-        return c.window.search(want)
+        // THE WINDOW FIRST — what was just said is more likely to be
+        // what was meant. THEN THE WHOLE ARCHIVE, because a postings
+        // lookup is a b-tree hit whether the chain is forty frames or
+        // forty thousand, and there is no reason to search less than
+        // all of it.
+        c.window.search(want)?.let { return it }
+        val st = c.chain ?: return null
+        for (tick in st.mentioning(c.entity, want)) {
+            val ids = st.prose(c.entity, tick)
+            if (ids.isEmpty()) continue
+            val said = c.table.say(ids)
+            val low = said.lowercase()
+            if (low.startsWith("what") || low.startsWith("which")) continue
+            if (want.any { low.contains(it) }) return said
+        }
+        return null
     }
 
     /**
