@@ -59,6 +59,9 @@ class WorkingSet(
 ) {
     val staged = LinkedHashMap<String, Staged>()
     val fading = LinkedHashMap<String, Staged>()
+    /** Below the fading floor. Costs nothing to hold and is still
+     *  searchable — quiet, not gone. */
+    val cold = LinkedHashMap<String, Staged>()
     var tick = 0
     var flushes = 0
     var evictedTotal = 0
@@ -77,7 +80,10 @@ class WorkingSet(
 
         // ── LOAD. Each incoming turn is a keyed arrival.
         for ((k, v) in arrivals) {
-            val prior = fading.remove(k)
+            // REVIVAL REACHES ALL THE WAY DOWN. Something mentioned
+            // again comes back from cold at full weight, because it
+            // never stopped existing.
+            val prior = fading.remove(k) ?: cold.remove(k)
             if (prior != null) {
                 // REVIVE. One mention brings it back at full weight,
                 // because it never stopped existing.
@@ -123,28 +129,52 @@ class WorkingSet(
             ops.add(WsOp.FADE to weakest.key)
         }
 
-        // ── the fading tier decays too, and eventually stops being
-        // reachable. IT IS STILL IN X. This is surfacing, not recording.
-        val gone = fading.values.filter {
-            it.will *= decay; it.will < fadeFloor
-        }.map { it.key }
-        for (k in gone) { fading.remove(k); evictedTotal++ }
+        // ── the fading tier decays, AND NOTHING IS DESTROYED.
+        //
+        // This was deleting the row outright, which is not fading, it
+        // is forgetting — a fact taught forty turns ago was GONE
+        // rather than quiet, and "evicted=43" was the count of things
+        // this body had lost. Recording is not governed; surfacing is,
+        // and I had the two the wrong way round.
+        //
+        // AND THERE IS NO REASON TO DESTROY ANYTHING. A postings lookup
+        // is microseconds against the whole archive, so holding it all
+        // as searchable costs a few megabytes and buys never losing
+        // anything. The tiers are about what is HOT, not about what
+        // exists.
+        val quiet = ArrayList<String>()
+        for (s in fading.values) {
+            s.will *= decay
+            if (s.will < fadeFloor) quiet.add(s.key)
+        }
+        for (k in quiet) {
+            val s = fading.remove(k) ?: continue
+            cold[k] = s          // OUT OF THE TIERS, NOT OUT OF EXISTENCE
+        }
 
         return mapOf(
             "tick" to tick, "active" to staged.size, "fading" to fading.size,
-            "quiet" to gone, "evicted" to evictedTotal,
+            "quiet" to quiet, "cold" to cold.size, "evicted" to 0,
         )
     }
 
     /** Pin something. Permanent holdings do not fade. */
     fun pin(key: String) { staged[key]?.pinned = true; ops.add(WsOp.PIN to key) }
 
-    /** What is reachable right now — active first, then fading. */
-    fun reachable(): List<Staged> = staged.values.toList() + fading.values.toList()
+    /**
+     * EVERYTHING, hot first.
+     *
+     * There is no reason to search less than all of it. Active, then
+     * fading, then cold — ordered by how likely it is to be what you
+     * meant, but nothing withheld.
+     */
+    fun reachable(): List<Staged> =
+        staged.values.toList() + fading.values.toList() + cold.values.toList()
 
     fun state(): Map<String, Any> = mapOf(
         "resident" to staged.size, "fading" to fading.size,
-        "evicted" to evictedTotal, "tick" to tick,
+        "cold" to cold.size, "held" to (staged.size + fading.size + cold.size),
+        "lost" to 0, "tick" to tick,
     )
 }
 
