@@ -289,6 +289,21 @@ class Chassis(val entity: String, val dir: File) {
      */
     var store: Archive? = null
     var lastHasu: Hasu? = null
+    /**
+     * X, IF THERE IS ONE.
+     *
+     * The chassis names WHAT IT NEEDS rather than the class that
+     * provides it, because SQLite is Android-only and the same code has
+     * to compile on a plain JVM. Without a chain the chassis still runs
+     * — and forgets on restart, which is a body with no yesterday.
+     */
+    interface Chain {
+        fun append(entity: String, h: Hasu, ids: IntArray)
+        fun mentioning(entity: String, terms: List<String>, limit: Int = 8): List<Long>
+        fun prose(entity: String, tick: Long): IntArray
+        fun count(entity: String): Long
+    }
+    var chain: Chain? = null
     var seated = false
     var senses = true
     val trace = ArrayList<String>()
@@ -469,6 +484,14 @@ class Chassis(val entity: String, val dir: File) {
                 st.index(I.tick, ids)
             }
         }
+        // X — AND IT GOES TO DISK. Everything above was in memory and
+        // died on restart. Recording is not governed: every frame is
+        // appended, whatever its salience, because a frame at 0.02
+        // costs the same as one at 0.9 and the tiers decide what is
+        // hot rather than what exists.
+        chain?.let { x ->
+            try { x.append(entity, lastHasu!!, ids) } catch (e: Exception) {}
+        }
         if (tags.isNotEmpty()) {
             val strikes = ArrayList<Strike>()
             for (t in tags) {
@@ -492,7 +515,7 @@ class Chassis(val entity: String, val dir: File) {
     private var turnN = 0
     val turns = ArrayList<Pair<String, String>>()
 
-    fun chainSize(): Int = I.tick.toInt()
+    fun chainSize(): Int = (chain?.count(entity) ?: I.tick).toInt()
 
     fun report(): String = buildString {
         appendLine("$entity")
