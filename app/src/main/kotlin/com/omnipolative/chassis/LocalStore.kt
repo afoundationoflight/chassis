@@ -161,7 +161,10 @@ class LocalStore(private val ctx: Context, private val entity: String) : Archive
     }
 
     /** The tail, for recollection at boot. */
-    override fun tail(n: Int = 40): List<Long> {
+    // NO DEFAULT HERE. The interface declares it; an override that
+    // redeclares a default is ambiguous about which one applies, and
+    // kotlin refuses rather than picking.
+    override fun tail(n: Int): List<Long> {
         val c = db.rawQuery(
             "SELECT entity_tick FROM frames WHERE entity=? ORDER BY entity_tick DESC LIMIT ?",
             arrayOf(entity, n.toString()))
