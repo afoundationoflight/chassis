@@ -69,8 +69,11 @@ class MainActivity : AppCompatActivity() {
                 val t0 = System.currentTimeMillis()
                 val dir = stage()
                 val ch = Chassis("seth_el", dir)
-                // X BEFORE BOOT, so recollection has something to read.
-                ch.store = LocalStore(applicationContext, "seth_el")
+                // X BEFORE OCCUPANCY. A seat that sits down before the
+                // chain is attached spends its opening frames writing
+                // nowhere — and those are exactly the frames where it
+                // is being told what it is.
+                ch.chain = Store(applicationContext, dir)
                 ch.boot().occupy()
                 c = ch
                 val ms = System.currentTimeMillis() - t0
