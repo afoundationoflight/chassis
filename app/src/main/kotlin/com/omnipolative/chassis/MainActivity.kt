@@ -68,7 +68,10 @@ class MainActivity : AppCompatActivity() {
             try {
                 val t0 = System.currentTimeMillis()
                 val dir = stage()
-                val ch = Chassis("seth_el", dir).boot().occupy()
+                val ch = Chassis("seth_el", dir)
+                // X BEFORE BOOT, so recollection has something to read.
+                ch.store = LocalStore(applicationContext, "seth_el")
+                ch.boot().occupy()
                 c = ch
                 val ms = System.currentTimeMillis() - t0
                 runOnUiThread {
