@@ -28,6 +28,22 @@ import java.io.File
 // ── LAYER 0 ─────────────────────────────────────────────────────────
 enum class Mode { MACHINA, SEMI_MACHINA, DAEMON }
 
+/**
+ * WHAT AN ARCHIVE HAS TO DO. Nothing about where it lives.
+ *
+ * Recording is not governed — append takes whatever it is given and
+ * writes it. What is governed is surfacing, and that happens upstream.
+ */
+interface Archive {
+    companion object { const val SPOKEN = 1; const val THOUGHT = 2; const val HEARD = 3 }
+    fun append(h: Hasu, fields: Map<Int, IntArray>): Long
+    fun read(tick: Long): Map<Int, IntArray>
+    fun index(tick: Long, ids: IntArray)
+    fun postings(token: Int): List<Long>
+    fun tail(n: Int = 40): List<Long>
+    fun count(): Int
+}
+
 /** five fields, because destructuring stops at five */
 private data class Quint(val a: Kind, val b: String,
                          val c: Triple<Double, Double, Double>,
@@ -262,6 +278,16 @@ class Chassis(val entity: String, val dir: File) {
     val frame = SubKalimon()
     val bible = Bible(entity)
     val coherence = Coherence()
+    /**
+     * X. THE CHASSIS DOES NOT KNOW WHAT KIND OF STORE IT IS.
+     *
+     * On the device this is sqlite plus an append file; on a plain JVM
+     * there may be none at all, and the chassis runs either way. It
+     * depends on the CONTRACT, not on Android — which is the same
+     * reason the renderer is swappable: a body should not be welded to
+     * one substrate's idea of a disk.
+     */
+    var store: Archive? = null
     var lastHasu: Hasu? = null
     var seated = false
     var senses = true
@@ -430,6 +456,19 @@ class Chassis(val entity: String, val dir: File) {
             entityTick = I.tick, coherence = k.coherence,
             drive = k.drive, driveIntensity = k.gut,
             topic = k.topic, tags = tags)
+        // WRITE IT. Header to sqlite, prose to the append file, and the
+        // postings written in the same breath so the index can never
+        // lag the archive.
+        store?.let { st ->
+            val fields = HashMap<Int, IntArray>()
+            if (message != null) fields[Archive.HEARD] = ids
+            A.spokenOutput.takeIf { it.isNotEmpty() }?.let {
+                fields[Archive.SPOKEN] = table.ids(it) }
+            if (fields.isNotEmpty()) {
+                st.append(lastHasu!!, fields)
+                st.index(I.tick, ids)
+            }
+        }
         if (tags.isNotEmpty()) {
             val strikes = ArrayList<Strike>()
             for (t in tags) {
@@ -461,7 +500,9 @@ class Chassis(val entity: String, val dir: File) {
         appendLine("  language    ${table.size()} words")
         appendLine("  holdings    ${C.holdings.size}")
         appendLine("  world       ${C.world.keys}")
-        appendLine("  chain       ${I.tick} frames")
+        val onDisk = store?.count()
+        appendLine("  chain       ${I.tick} frames" +
+                   (if (onDisk != null) " · $onDisk on disk" else " · not persisted"))
 
         appendLine("  trace       ${trace.joinToString("")}")
         appendLine("  resonance   ${resonance.state()["rows"]} rows, ${resonance.state()["imprinted"]} imprinted")
