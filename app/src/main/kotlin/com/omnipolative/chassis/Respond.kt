@@ -347,7 +347,12 @@ object Respond {
             // meets the second's first. A transition table says what
             // can follow what WITHIN a sentence; a full stop is
             // precisely the place that stops applying.
-            for (part in draft.text.split(Regex("[.!?]+"))) {
+            // COLONS AND SEMICOLONS BREAK A CLAUSE TOO. "You told me:
+            // The keystone is..." was rejected at the boundary because
+            // I split on .!? only, so "me" and "the" ended up adjacent
+            // across a break that is real in the sentence and invisible
+            // to the splitter. Same bug as the period, one mark over.
+            for (part in draft.text.split(Regex("[.!?;:—]+"))) {
                 val p = part.trim()
                 if (p.isEmpty()) continue
                 val g = Grammar.check(Grammar.tag(p).map { it.second })
