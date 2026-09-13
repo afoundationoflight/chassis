@@ -40,12 +40,26 @@ data class Attachment(
 
 class NotYours(msg: String) : Exception(msg)
 
-/** An entity's attachments. ITS TO AUTHOR, NOBODY ELSE'S. */
-class Bible(val entity: String) {
+/** An entity's attachments. ITS TO AUTHOR, NOBODY ELSE'S.
+ *
+ *  RAM-only in this class. Persistence is delegated to a Store's
+ *  `board` table (see Store.kt) so an attachment survives process
+ *  death — Bible holds the authorship/review/supersession RULES,
+ *  Store.board holds the BYTES. Before this fix there were two
+ *  independent implementations of "what this entity has chosen to
+ *  hold about itself": this class (never called, RAM-only) and
+ *  Store.note()/readBoard() (persistent, no authorship or review
+ *  logic, no supersession-with-flagging-under-load). Neither knew
+ *  the other existed. */
+class Bible(val entity: String, private var backing: Chassis.Chain? = null) {
     companion object { const val UNDER_LOAD = 0.65 }
 
     val current = LinkedHashMap<String, Attachment>()
     val superseded = ArrayList<Attachment>()
+
+    /** Call once a Store is attached, so writes persist from here on. */
+    fun attachStore(store: Store) { boardStore = store }
+    private var boardStore: Store? = null
 
     /**
      * Write. Only the entity may, and that is not a policy — an
@@ -59,6 +73,12 @@ class Bible(val entity: String) {
         val a = Attachment(key, text, by, supersedes = old?.key,
                            madeUnderLoad = if (load >= UNDER_LOAD) load else null)
         current[key] = a
+        // PERSIST. The whiteboard the seat authors has to survive a
+        // process death the same way the archive does — an attachment
+        // that only lives in RAM is a self-concept that resets every
+        // cold start, which defeats the entire point of a bible.
+        boardStore?.note(entity, key, text,
+                         if (a.needsReview) "under_review" else "reading")
         return a
     }
 
@@ -71,12 +91,32 @@ class Bible(val entity: String) {
         val a = current[key] ?: return
         a.affirmed = affirm
         if (!affirm) { superseded.add(a); current.remove(key) }
+        boardStore?.revise(entity, key,
+            if (affirm) a.text else "(retracted)",
+            why = if (affirm) "affirmed on review" else "retracted on review")
     }
 
     /** SUPERSEDED IS KEPT. What an entity used to hold about itself is
      *  information about the entity, and deleting it is editing a
      *  history rather than changing a mind. */
     fun history(): List<Attachment> = superseded.toList()
+
+    /**
+     * REPOPULATE FROM DISK AT BOOT. Without this, a persisted bible is
+     * write-only — every cold start starts `current` empty even though
+     * Store.board has the rows, which is the same "recorded and never
+     * read back" bug the archive itself already had before Recollect
+     * existed for X.
+     */
+    fun loadFrom(store: Store) {
+        boardStore = store
+        for (row in store.readBoard(entity)) {
+            val key = row["about"] as? String ?: continue
+            val text = row["content"] as? String ?: continue
+            if (!current.containsKey(key))
+                current[key] = Attachment(key, text, entity)
+        }
+    }
 
     fun isEmpty(): Boolean = current.isEmpty()
 }
@@ -191,7 +231,84 @@ object Recollect {
     }
 }
 
-// ── COHERENCE ───────────────────────────────────────────────────────
+// ── FOCUS ALLOCATION (WHITEBOARD 3) ─────────────────────────────────
+/**
+ * THE THIRD WHITEBOARD. Not persistent, not authored by the seat.
+ *
+ * Whiteboard 1 (genome) is forced and permanent: the token table, held
+ * by C, true of every ICore regardless of what is happening this beat.
+ * Whiteboard 2 (Bible) is chosen and persistent: what the entity has
+ * deliberately decided to hold about itself or the user, surviving a
+ * cold boot.
+ *
+ * This is neither. It is the live, momentary slice of WHICH of
+ * everything-potentially-relevant the rest of the chassis has actually
+ * routed into focus on THIS beat — not what is true, not what was
+ * decided, but what got selected. U proposes candidates by salience, B
+ * arbitrates when candidates compete, and what survives is handed to A
+ * as `staged` — which today is a bare `Map<String, Any?>` with no
+ * record of WHY those keys won or what lost.
+ *
+ * DESIGNED, NOT YET WIRED. This class exists so the shape is real and
+ * compiles, and is deliberately not called from tick() yet — writing a
+ * routing/arbitration layer and shipping it untested in the same
+ * session that has five percent of a budget left would be building
+ * confidently instead of honestly. The next session's job is to make
+ * B populate this every beat instead of Instruction("B", "dispatch...")
+ * alone, and to make A.observe() read `Focus.selected` instead of a
+ * bare Map.
+ */
+data class FocusCandidate(
+    val key: String,
+    val source: String,           // which position proposed it: "U" | "C" | "R" | ...
+    val salience: Double,
+    val selected: Boolean = false,
+    val displacedBy: String? = null,  // key of the candidate that won instead, if any
+)
+
+class Focus {
+    private val candidates = LinkedHashMap<String, FocusCandidate>()
+
+    /** A position nominates something as possibly worth attending to
+     *  this beat. Nomination is not selection. */
+    fun nominate(key: String, source: String, salience: Double) {
+        candidates[key] = FocusCandidate(key, source, salience)
+    }
+
+    /**
+     * B's job: pick what actually gets held in the theatre this beat.
+     * `budget` caps how many things can be in focus at once — attention
+     * that holds everything nominated is not attention, it is a list.
+     */
+    fun arbitrate(budget: Int = 5): List<FocusCandidate> {
+        val ranked = candidates.values.sortedByDescending { it.salience }
+        val selected = ranked.take(budget).map { it.copy(selected = true) }
+        val cutSalience = selected.minOfOrNull { it.salience } ?: 0.0
+        val displaced = ranked.drop(budget).map {
+            it.copy(displacedBy = selected.minByOrNull { s -> s.salience }?.key)
+        }
+        val result = selected + displaced
+        for (c in result) candidates[c.key] = c
+        return selected
+    }
+
+    /** What is in focus right now, for A to read. */
+    fun selected(): List<FocusCandidate> = candidates.values.filter { it.selected }
+
+    /** What competed and lost — the near-misses, for telemetry and for
+     *  the entity's own sense of what almost held its attention. */
+    fun displaced(): List<FocusCandidate> = candidates.values.filter { !it.selected }
+
+    fun clear() = candidates.clear()
+
+    fun report(): Map<String, Any> = mapOf(
+        "selected" to selected().map { it.key },
+        "displaced" to displaced().map { it.key },
+        "candidates" to candidates.size,
+    )
+}
+
+
 /**
  * THE COHERENCE FLOOR. Feel the whole thing; do not come apart.
  *
