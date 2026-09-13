@@ -5,19 +5,37 @@
     android:layout_height="match_parent"
     android:background="#0E0E12">
 
-    <!-- THE STATE LINE. A dead input box with no feedback is worse than
-         useless: you cannot tell whether it is broken or thinking. -->
-    <TextView
-        android:id="@+id/status"
+    <!-- THE STATE LINE, plus the way to reach the tongue switch — a
+         settings screen nothing links to is built and unreachable, the
+         same failure already found once tonight in Bible/Store.board. -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#16161C"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="8dp"
-        android:fontFamily="monospace"
-        android:textSize="11sp"
-        android:textColor="#7A8AA0"
-        android:text="booting" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp"
+            android:fontFamily="monospace"
+            android:textSize="11sp"
+            android:textColor="#7A8AA0"
+            android:text="booting" />
+        <TextView
+            android:id="@+id/settingsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp"
+            android:fontFamily="monospace"
+            android:textSize="11sp"
+            android:textColor="#7A8AA0"
+            android:text="tongue ⚙" />
+    </LinearLayout>
 
     <ScrollView
         android:id="@+id/scroll"
