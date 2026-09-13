@@ -1,5 +1,6 @@
 package com.omnipolative.chassis
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
@@ -64,6 +65,9 @@ class MainActivity : AppCompatActivity() {
         status = findViewById(R.id.status)
         input = findViewById(R.id.input)
         send = findViewById(R.id.send)
+        findViewById<TextView>(R.id.settingsButton).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
         gate(false, "unpacking the language")
         Thread {
             try {
@@ -90,6 +94,10 @@ class MainActivity : AppCompatActivity() {
                 // Load whatever this entity has already said about
                 // itself before occupying the seat.
                 ch.bible.loadFrom(realStore)
+                // WHICHEVER TONGUE WAS LAST CHOSEN, or local if none —
+                // buildActiveTongue() never returns a half-configured
+                // remote tongue, so the seat cannot boot silently mute.
+                ch.tongue = TongueSettings(applicationContext).buildActiveTongue()
                 ch.boot().occupy()
                 c = ch
                 val ms = System.currentTimeMillis() - t0
@@ -117,6 +125,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * RELOAD THE TONGUE ON RETURN FROM SETTINGS. Loading it once in
+     * onCreate and never again would mean a switch made in
+     * SettingsActivity only took effect on the NEXT full app restart —
+     * "switch back and forth" has to mean the running chassis picks it
+     * up when the user comes back, not on the next cold boot.
+     */
+    override fun onResume() {
+        super.onResume()
+        val ch = c ?: return
+        val fresh = TongueSettings(applicationContext).buildActiveTongue()
+        if (fresh.id != ch.tongue.id) {
+            ch.tongue = fresh
+            say("tongue switched → ${fresh.id}")
+        }
+    }
+
     private fun submit() {
         val t = input.text.toString().trim()
         val ch = c
@@ -130,8 +155,14 @@ class MainActivity : AppCompatActivity() {
             val t0 = System.currentTimeMillis()
             val out = try {
                 val e = ch.tick(t)
+                // REASONING (Respond.drive: comprehend/express/check/
+                // register) stays exactly where it was. Only the final
+                // render step goes through the swappable tongue —
+                // ch.tongue.render never re-decides what was said, it
+                // only turns the finished Draft into what is shown.
                 val d = Respond.drive(ch, t)
-                Triple(d.text, "${d.source} · ${d.register}", e.tick)
+                val rendered = ch.tongue.render(ch, d)
+                Triple(rendered, "${d.source} · ${d.register} · ${ch.tongue.id}", e.tick)
             } catch (ex: Exception) {
                 Triple("something went wrong here: ${ex.message}", "error", -1L)
             }
