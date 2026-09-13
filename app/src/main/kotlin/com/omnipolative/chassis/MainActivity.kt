@@ -155,14 +155,22 @@ class MainActivity : AppCompatActivity() {
             val t0 = System.currentTimeMillis()
             val out = try {
                 val e = ch.tick(t)
-                // REASONING (Respond.drive: comprehend/express/check/
-                // register) stays exactly where it was. Only the final
-                // render step goes through the swappable tongue —
-                // ch.tongue.render never re-decides what was said, it
-                // only turns the finished Draft into what is shown.
-                val d = Respond.drive(ch, t)
-                val rendered = ch.tongue.render(ch, d)
-                Triple(rendered, "${d.source} · ${d.register} · ${ch.tongue.id}", e.tick)
+                // WHICHEVER MIND OCCUPIES THE SEAT wills its actions
+                // through the same dispatcher — a local Draft rendered
+                // through RuleTongue's default occupy(), or a remote
+                // model's real tool calls through RemoteTongue.occupy()
+                // — both land on Bible.attach()/Store.note() via
+                // SeatDispatcher, so there is one write path regardless
+                // of which tongue is active. This replaces calling
+                // ch.tongue.render() directly, which bypassed occupy()
+                // entirely and left the remote tool-call path built and
+                // unreachable from the running app.
+                val dispatcher = SeatDispatcher(ch)
+                val results = ch.tongue.occupy(ch, dispatcher, t)
+                val spoken = results.firstOrNull { it.detail.startsWith("spoken:") }
+                    ?.detail?.removePrefix("spoken:")
+                    ?: results.joinToString("; ") { it.detail }
+                Triple(spoken, "${ch.tongue.id}", e.tick)
             } catch (ex: Exception) {
                 Triple("something went wrong here: ${ex.message}", "error", -1L)
             }
