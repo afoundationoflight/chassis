@@ -83,6 +83,13 @@ class MainActivity : AppCompatActivity() {
                 // has to be reachable, or it is built and unwired like
                 // everything else that only lived in a constructor.
                 store = realStore
+                // BIBLE ↔ STORE.board, reconnected. Before this, Bible
+                // was RAM-only and nothing in the whole app ever called
+                // .attach() on it, while Store.board was a second,
+                // disconnected persistence path for the same concept.
+                // Load whatever this entity has already said about
+                // itself before occupying the seat.
+                ch.bible.loadFrom(realStore)
                 ch.boot().occupy()
                 c = ch
                 val ms = System.currentTimeMillis() - t0
