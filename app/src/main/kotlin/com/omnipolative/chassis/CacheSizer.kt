@@ -25,51 +25,86 @@ package com.omnipolative.chassis
  * remote mind, and growing the cache with them is additive rather than
  * padding.
  */
+/**
+ * WHAT ACTUALLY GOES IN THE CACHE, MEASURED CORRECTLY THE SECOND TIME.
+ *
+ * The first version of this file called Table.say() on every gloss —
+ * which fully DECOMPRESSES token ids back into space-separated English
+ * words — before measuring the result. That produced 22 MB of
+ * expanded prose and an estimated 5.5M tokens, the opposite of what a
+ * compressed cache payload should be. The dictionary was never that
+ * large; the measurement was wrong.
+ *
+ * THE ACTUAL FORMAT, as specified: one word<->id table (English
+ * equivalents, written once, not per definition) plus a pos/gloss
+ * column and a definitions column written IN TOKEN SYMBOLS — ids, not
+ * expanded English — with a crawler-style reader that consumes ids
+ * directly rather than extracting/decompressing them first. This
+ * version keeps glosses as raw id sequences and reports id counts, not
+ * decompressed character counts, which is the honest measure of what
+ * a token-symbol cache payload actually contains.
+ */
 object CacheSizer {
 
     data class Measurement(
         val entries: Int,
-        val chars: Long,
+        /** Distinct word<->id table entries — written ONCE, not per gloss. */
+        val vocabularySize: Int,
+        /** Total token ids across every gloss, still compressed form. */
+        val glossTokenIds: Long,
         val estimatedTokens: Long,
         val clearsMinimum: Boolean,
     )
 
     private const val CACHE_MINIMUM_TOKENS = 32_768L
-    private const val CHARS_PER_TOKEN_ESTIMATE = 4.0
+    // A token id (e.g. "482") is not one model-token; conservatively
+    // budget ~1.3 model-tokens per id (integers are usually 1, longer
+    // ids occasionally split) rather than assume 1:1.
+    private const val ESTIMATED_TOKENS_PER_ID = 1.3
 
     /**
-     * Serialize the FULL dictionary as "word — sense1; sense2..." lines,
-     * exactly the form a cached-content block would actually hold.
-     * Walks every word id via the same Table the chassis uses, so this
-     * measures the real thing, not a sample.
+     * Build the cache payload in the SPECIFIED shape:
+     *   [vocabulary]  word<TAB>id, one line per word, written once
+     *   [glosses]     wordId<TAB>posId<TAB>id,id,id...  — TOKEN IDS, not English
+     *
+     * Nothing here calls table.say() — that is the decompression step,
+     * and doing it before caching defeats the entire point of shipping
+     * a compressed representation to the remote side.
      */
-    fun serializeDictionary(table: Table): String {
-        val sb = StringBuilder()
+    fun serializeDictionary(table: Table): Pair<String, Measurement> {
+        val vocab = StringBuilder()
+        val glosses = StringBuilder()
+        var vocabCount = 0
+        var glossIdCount = 0L
         var i = 1  // word id 0 is "not found" per Table.word()
         val n = table.size()
         while (i <= n) {
             val w = table.word(i)
             if (w != "?") {
+                vocab.append(w).append('\t').append(i).append('\n')
+                vocabCount++
                 val senses = table.mean(w)
-                if (senses.isNotEmpty()) {
-                    val glosses = senses.joinToString("; ") { table.say(it) }
-                    sb.append(w).append(" — ").append(glosses).append('\n')
+                for (sense in senses) {
+                    // RAW IDS, comma-joined — the compressed form, the
+                    // same representation Crawler.mean() already
+                    // returns. Nothing is expanded to English here.
+                    glosses.append(i).append('\t')
+                        .append(sense.joinToString(",")).append('\n')
+                    glossIdCount += sense.size
                 }
             }
             i++
         }
-        return sb.toString()
-    }
-
-    fun measure(text: String): Measurement {
-        val chars = text.length.toLong()
-        val estTokens = (chars / CHARS_PER_TOKEN_ESTIMATE).toLong()
-        return Measurement(
-            entries = text.lineSequence().count { it.isNotBlank() },
-            chars = chars,
+        val content = "[vocabulary]\n$vocab[glosses]\n$glosses"
+        val estTokens = ((vocabCount + glossIdCount) * ESTIMATED_TOKENS_PER_ID).toLong()
+        val m = Measurement(
+            entries = vocabCount,
+            vocabularySize = vocabCount,
+            glossTokenIds = glossIdCount,
             estimatedTokens = estTokens,
             clearsMinimum = estTokens >= CACHE_MINIMUM_TOKENS,
         )
+        return content to m
     }
 
     /**
@@ -80,15 +115,18 @@ object CacheSizer {
      */
     fun buildCacheContent(table: Table, curriculumSource: String? = null,
                          grammarSource: String? = null): Pair<String, Measurement> {
-        var content = serializeDictionary(table)
-        var m = measure(content)
+        var (content, m) = serializeDictionary(table)
         if (!m.clearsMinimum && grammarSource != null) {
-            content += "\n--- grammar ---\n" + grammarSource
-            m = measure(content)
+            content += "\n[grammar]\n" + grammarSource
+            val extra = (grammarSource.length / 4.0).toLong()
+            m = m.copy(estimatedTokens = m.estimatedTokens + extra,
+                      clearsMinimum = m.estimatedTokens + extra >= CACHE_MINIMUM_TOKENS)
         }
         if (!m.clearsMinimum && curriculumSource != null) {
-            content += "\n--- curriculum ---\n" + curriculumSource
-            m = measure(content)
+            content += "\n[curriculum]\n" + curriculumSource
+            val extra = (curriculumSource.length / 4.0).toLong()
+            m = m.copy(estimatedTokens = m.estimatedTokens + extra,
+                      clearsMinimum = m.estimatedTokens + extra >= CACHE_MINIMUM_TOKENS)
         }
         return content to m
     }
