@@ -27,6 +27,7 @@ import java.io.File
 class MainActivity : AppCompatActivity() {
 
     private var c: Chassis? = null
+    private var store: Store? = null
     private var busy = false
     private lateinit var log: TextView
     private lateinit var scroll: ScrollView
@@ -73,7 +74,15 @@ class MainActivity : AppCompatActivity() {
                 // chain is attached spends its opening frames writing
                 // nowhere — and those are exactly the frames where it
                 // is being told what it is.
-                ch.chain = Store(applicationContext, dir)
+                val realStore = Store(applicationContext, dir)
+                ch.chain = realStore
+                // Held CONCRETELY, not just through Chain, because the
+                // whiteboard (note/readBoard/revise/userProfile/
+                // selfProfile) is not part of what the tick needs and
+                // does not belong on the Chain interface — but it still
+                // has to be reachable, or it is built and unwired like
+                // everything else that only lived in a constructor.
+                store = realStore
                 ch.boot().occupy()
                 c = ch
                 val ms = System.currentTimeMillis() - t0
