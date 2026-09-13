@@ -63,9 +63,16 @@ class SeatDispatcher(private val chassis: Chassis) {
         }
 
         is SeatAction.ReviseWhiteboard -> try {
-            val store = chassis.store
+            // chassis.store IS TYPED Archive?, and revise() is a
+            // Store-specific method not on that interface — same
+            // class-vs-interface gap already found once tonight with
+            // Bible/Store.board. A safe cast here rather than widening
+            // Archive itself, since Archive's contract (append/read/
+            // index/postings) is deliberately substrate-agnostic and
+            // revise() is not part of what every archive must support.
+            val store = chassis.store as? Store
             if (store == null) {
-                SeatActionResult(false, "no store attached — cannot revise")
+                SeatActionResult(false, "no Store attached — cannot revise")
             } else {
                 store.revise(chassis.entity, action.key, action.text, action.why)
                 SeatActionResult(true, "revised: ${action.key}")
