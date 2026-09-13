@@ -304,6 +304,12 @@ class Chassis(val entity: String, val dir: File) {
         fun count(entity: String): Long
     }
     var chain: Chain? = null
+    /** WHO RENDERS A'S OUTPUT. Local by default — the seat never boots
+     *  without a working tongue, since a missing/misconfigured remote
+     *  key must degrade to local rather than go silent. Swappable at
+     *  runtime; the reasoning above this line (comprehend/express/
+     *  check/register) never changes with the swap. */
+    var tongue: Tongue = RuleTongue()
     var seated = false
     var senses = true
     val trace = ArrayList<String>()
