@@ -52,6 +52,9 @@ jobs:
             exit 1
           fi
 
+      - name: generate the gradle wrapper
+        run: gradle wrapper --gradle-version 8.9 --no-daemon
+
       - name: sit in the pilot seat
         run: |
           # NOT TELEMETRY ABOUT THE BUILD — the actual whiteboard,
@@ -59,6 +62,11 @@ jobs:
           # runtime (Robolectric). If note()/readBoard()/revise()/
           # userProfile()/selfProfile() don't behave, this fails here
           # and the release step below never runs.
+          #
+          # (This step originally ran before the wrapper existed —
+          # `gradle wrapper` used to happen inside the build step below
+          # — so ./gradlew was not there yet and the test never actually
+          # ran. Moved wrapper generation ahead of everything gradle.)
           ./gradlew testDebugUnitTest --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v4
@@ -68,9 +76,7 @@ jobs:
           path: app/build/test-results/testDebugUnitTest/*.xml
 
       - name: build
-        run: |
-          gradle wrapper --gradle-version 8.9 --no-daemon
-          ./gradlew assembleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:
