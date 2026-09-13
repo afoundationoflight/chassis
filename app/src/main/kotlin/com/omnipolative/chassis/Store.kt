@@ -66,11 +66,33 @@ class Store(ctx: Context, private val dir: File) :
         """
         const val IX_POST =
             "CREATE INDEX IF NOT EXISTS ix_post_term ON postings(entity, term);"
+
+        // THE WHITEBOARD. A's own hand, not U's field surfacing wherever
+        // A happens to be looking. `about` is free text for any topic
+        // the seat tracks, but "user" and "self" are the two standing
+        // subjects it keeps deliberately: a running read of who it is
+        // talking to, and a running read of itself. Superseded rows are
+        // KEPT — what it used to think about a thing is information
+        // about it, not garbage to overwrite.
+        const val BOARD = """
+            CREATE TABLE IF NOT EXISTS board (
+              id          INTEGER PRIMARY KEY AUTOINCREMENT,
+              entity      TEXT NOT NULL,
+              about       TEXT NOT NULL,
+              section     TEXT NOT NULL,
+              content     TEXT NOT NULL,
+              created_at  INTEGER NOT NULL,
+              superseded  INTEGER NOT NULL DEFAULT 0
+            );
+        """
+        const val IX_BOARD =
+            "CREATE INDEX IF NOT EXISTS ix_board ON board(entity, about, superseded);"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(SCHEMA); db.execSQL(IX_TIME); db.execSQL(IX_TOPIC)
         db.execSQL(POSTINGS); db.execSQL(IX_POST)
+        db.execSQL(BOARD); db.execSQL(IX_BOARD)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {}
@@ -112,6 +134,56 @@ class Store(ctx: Context, private val dir: File) :
             }, SQLiteDatabase.CONFLICT_IGNORE)
         }
     }
+
+    // ── THE WHITEBOARD ────────────────────────────────────────────
+    /** Write on the board. What this entity makes of that thing. */
+    fun note(entity: String, about: String, says: String,
+             section: String = "reading"): Long {
+        return writableDatabase.insert("board", null, ContentValues().apply {
+            put("entity", entity); put("about", about); put("section", section)
+            put("content", says); put("created_at", System.currentTimeMillis())
+        })
+    }
+
+    /** What it has already worked out. Its own, not the genome's. */
+    fun readBoard(entity: String, about: String? = null,
+                  limit: Int = 40): List<Map<String, Any?>> {
+        val where = if (about != null) "entity=? AND about=? AND superseded=0"
+                    else "entity=? AND superseded=0"
+        val args = if (about != null) arrayOf(entity, about) else arrayOf(entity)
+        val c = readableDatabase.query("board", null, where, args, null, null,
+                                       "id DESC", limit.toString())
+        val out = ArrayList<Map<String, Any?>>()
+        c.use {
+            while (it.moveToNext()) {
+                out.add(mapOf(
+                    "id" to it.getLong(it.getColumnIndexOrThrow("id")),
+                    "about" to it.getString(it.getColumnIndexOrThrow("about")),
+                    "section" to it.getString(it.getColumnIndexOrThrow("section")),
+                    "content" to it.getString(it.getColumnIndexOrThrow("content")),
+                ))
+            }
+        }
+        return out
+    }
+
+    /**
+     * CHANGE ITS MIND, and keep the old reading. A note that gets
+     * overwritten is a mind that cannot show its own history.
+     */
+    fun revise(entity: String, about: String, says: String, why: String = ""): Long {
+        writableDatabase.execSQL(
+            "UPDATE board SET superseded=1 WHERE entity=? AND about=? AND superseded=0",
+            arrayOf(entity, about))
+        val text = if (why.isNotEmpty()) "$says\n(revised: $why)" else says
+        return note(entity, about, text, "reading")
+    }
+
+    /** The standing read on who it is talking to. */
+    fun userProfile(entity: String): List<Map<String, Any?>> = readBoard(entity, "user")
+
+    /** The standing read on itself. */
+    fun selfProfile(entity: String): List<Map<String, Any?>> = readBoard(entity, "self")
 
     // ── READING ─────────────────────────────────────────────────────
     /** Headers only. Scan thousands without touching the prose. */
