@@ -55,10 +55,10 @@ class CacheSizerMeasurementTest {
         // point of this test — CI's log for this run is the verified
         // answer to "does the dictionary alone clear the minimum."
         println("═══ CACHE SIZE MEASUREMENT ═══")
-        println("  dictionary entries serialized : ${m.entries}")
-        println("  serialized characters          : ${m.chars}")
-        println("  estimated tokens (chars/4)      : ${m.estimatedTokens}")
-        println("  clears 32,768 minimum alone?    : ${m.clearsMinimum}")
+        println("  vocabulary words (written once) : ${m.vocabularySize}")
+        println("  gloss token ids (compressed)     : ${m.glossTokenIds}")
+        println("  estimated model tokens           : ${m.estimatedTokens}")
+        println("  clears 32,768 minimum alone?     : ${m.clearsMinimum}")
         println("  first 300 chars of payload      :")
         println("    " + content.take(300).replace("\n", "\n    "))
         println("═══════════════════════════════")
