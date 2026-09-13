@@ -446,6 +446,18 @@ class Chassis(val entity: String, val dir: File) {
         A.attend("felt"); A.attend("scene")
         proposed += A.propose()
 
+        // BIBLE. The one place the seat authors something about
+        // itself, DELIBERATELY rather than incidentally — this was
+        // built (Holding.kt) and never called anywhere in the app.
+        // Only writes when there is an actual internalThought this
+        // beat, and tags it with the load it was made under so a
+        // revision made mid-crisis is flagged rather than treated as
+        // settled.
+        if (A.internalThought.isNotEmpty()) {
+            bible.attach("self:last_thought", A.internalThought, entity,
+                        load = k.gut)
+        }
+
         // L — the tongue
         trace.add("L")
 
