@@ -52,6 +52,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
+    // Keystore-backed encrypted storage for the remote tongue's model
+    // name + API key — not the plaintext board SQLite table.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // ROBOLECTRIC. This container has no Android runtime and no device,
     // so "verified from the pilot seat" was going to mean either faking
