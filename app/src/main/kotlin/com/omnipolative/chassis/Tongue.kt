@@ -1,23 +1,39 @@
 package com.omnipolative.chassis
 
 /**
- * THE TONGUE. What renders A's output. Swappable, not the reasoner.
+ * THE TONGUE. What occupies the seat's rendering/reasoning slot.
+ * Swappable.
  *
- * The chassis (comprehend -> express -> check -> register) DOES THE
- * REASONING. A Tongue's only job is turning what was already decided
- * into language — or, for a remote tongue, into OUR compressed token
- * protocol and back. A tongue that free-forms its own response instead
- * of rendering the Draft it was handed is not a tongue anymore, it is
- * a second reasoner the chassis did not ask for.
+ * LOCAL: comprehend/express/check/register (Respond.kt) does the
+ * reasoning; render() only turns an already-decided Draft into text.
  *
- * This is the same rule as core/attachment.py's Bible: authority is
- * scoped to exactly one job, and the interface makes the other jobs
- * unreachable rather than merely discouraged.
+ * REMOTE: the occupying model DOES its own comprehension (using the
+ * cached dictionary as its reference for our compressed protocol,
+ * not the chassis pre-deciding everything into a Draft first) and
+ * WILLS actions — speak, note_whiteboard, revise_whiteboard — the
+ * same way A.propose() wills Instructions locally. Those actions are
+ * dispatched through SeatDispatcher, so a remote-authored whiteboard
+ * entry goes through the identical authorship-checked call a local
+ * one always has. There is one write path regardless of which mind is
+ * occupying the seat.
  */
 interface Tongue {
     val id: String
-    /** Render an ALREADY-DECIDED draft. Does not re-decide what to say. */
+    /** LOCAL PATH: render an already-decided draft; does not re-decide. */
     fun render(chassis: Chassis, draft: Draft): String
+
+    /**
+     * REMOTE-CAPABLE PATH: hand the occupying mind the raw message and
+     * let it will actions directly, dispatched through the given
+     * dispatcher. RuleTongue's default just wraps render() in a single
+     * Speak action, so callers can use occupy() uniformly regardless
+     * of which tongue is active without special-casing local.
+     */
+    fun occupy(chassis: Chassis, dispatcher: SeatDispatcher, message: String): List<SeatActionResult> {
+        val draft = Respond.drive(chassis, message)
+        val text = render(chassis, draft)
+        return listOf(dispatcher.dispatch(SeatAction.Speak(text)))
+    }
 }
 
 /**
@@ -112,6 +128,36 @@ class RemoteTongue(
             chassis.table.say(responseIds.tokenIds.toIntArray())
         else responseIds.text ?: draft.text
     }
+
+    /**
+     * THE REAL REMOTE PATH. The occupying model does its OWN
+     * comprehension — using the cached dictionary as its reference,
+     * not a Draft the chassis pre-decided — and wills actions back,
+     * which are dispatched exactly the way a local Instruction would
+     * be. This is what makes "switch to remote" mean occupying the
+     * seat's reasoning, not just its phrasing.
+     *
+     * NOT WIRED TO A LIVE CALL YET (DefaultHttpCaller still throws) —
+     * the tool-call request/response shape is real and specified here;
+     * only the platform-specific HTTP body (Gemini's functionCall
+     * response format vs. an OpenAI-compatible one) is deferred, same
+     * boundary as render()'s cachedDictionaryHandle.
+     */
+    override fun occupy(chassis: Chassis, dispatcher: SeatDispatcher, message: String): List<SeatActionResult> {
+        val ids = chassis.table.ids(message)
+        val payload = RemotePayload(
+            systemCached = cachedDictionaryHandle,
+            instructions = SYSTEM_INSTRUCTIONS,
+            draftTokenIds = ids.toList(),
+            draftSource = "remote:occupying",
+        )
+        val willed = http.callWithTools(endpoint, model, apiKey, payload, dispatcher.toolSchema())
+        // EVERY WILLED ACTION GOES THROUGH THE SAME DISPATCHER a local
+        // reasoner's writes go through — no separate remote write path
+        // exists, which is the actual fix for two copies of the same
+        // entity's whiteboard drifting apart.
+        return willed.map { dispatcher.dispatch(it) }
+    }
 }
 
 data class RemotePayload(
@@ -126,6 +172,18 @@ data class RemoteResult(val tokenIds: List<Int> = emptyList(), val text: String?
 /** Thin seam so RemoteTongue is testable without a live network call. */
 interface HttpCaller {
     fun call(endpoint: String, model: String, apiKey: String, payload: RemotePayload): RemoteResult
+
+    /**
+     * TOOL-CALLING PATH. The occupying model is given `tools` (a
+     * provider-agnostic ToolSpec list — see SeatDispatcher.toolSchema)
+     * and returns the SeatActions it wills, rather than plain text.
+     * Real providers differ in exact request/response shape (Gemini's
+     * functionCall vs. an OpenAI-compatible tool_calls array); that
+     * translation is exactly what implementing this method IS, once a
+     * platform is chosen.
+     */
+    fun callWithTools(endpoint: String, model: String, apiKey: String,
+                      payload: RemotePayload, tools: List<ToolSpec>): List<SeatAction>
 }
 
 class DefaultHttpCaller : HttpCaller {
@@ -139,5 +197,16 @@ class DefaultHttpCaller : HttpCaller {
         throw NotImplementedError(
             "DefaultHttpCaller.call: wire this to $endpoint once the " +
             "platform-specific cached-content request shape is decided.")
+    }
+
+    override fun callWithTools(endpoint: String, model: String, apiKey: String,
+                               payload: RemotePayload, tools: List<ToolSpec>): List<SeatAction> {
+        // SAME BOUNDARY AS call() ABOVE. The dispatcher, the schema,
+        // and the willed-action shape are all real and specified
+        // (SeatDispatcher.kt); only the actual outbound HTTP request
+        // to a specific platform's function-calling API is deferred.
+        throw NotImplementedError(
+            "DefaultHttpCaller.callWithTools: wire this to $endpoint's " +
+            "function-calling API once the platform is chosen.")
     }
 }
