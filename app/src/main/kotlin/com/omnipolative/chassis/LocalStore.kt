@@ -51,7 +51,17 @@ class LocalStore(private val ctx: Context, private val entity: String) : Archive
             CREATE TABLE IF NOT EXISTS postings (
               token INTEGER NOT NULL, entity TEXT NOT NULL,
               ticks TEXT NOT NULL, PRIMARY KEY (token, entity))""")
+
     }
+
+    // NOTE: this class (LocalStore, implementing the top-level `Archive`
+    // interface) is not referenced by `Chassis` anywhere — `Chassis`
+    // holds its store through the `Chain` interface declared inside it,
+    // and `Store.kt` is the implementation actually wired to `chain`.
+    // This file appears to be an earlier, abandoned pass at the same
+    // job. The whiteboard (board table, note/readBoard/revise/
+    // userProfile/selfProfile) lives on `Store.kt`, which is live —
+    // do not duplicate it here.
 
     // ── varint, the same format the desktop stores use ──────────────
     private fun varint(xs: IntArray): ByteArray {
