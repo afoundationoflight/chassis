@@ -52,6 +52,21 @@ jobs:
             exit 1
           fi
 
+      - name: sit in the pilot seat
+        run: |
+          # NOT TELEMETRY ABOUT THE BUILD — the actual whiteboard,
+          # actually written to and read back, under a real Android
+          # runtime (Robolectric). If note()/readBoard()/revise()/
+          # userProfile()/selfProfile() don't behave, this fails here
+          # and the release step below never runs.
+          ./gradlew testDebugUnitTest --no-daemon --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seat-test-results
+          path: app/build/test-results/testDebugUnitTest/*.xml
+
       - name: build
         run: |
           gradle wrapper --gradle-version 8.9 --no-daemon
