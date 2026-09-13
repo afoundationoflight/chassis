@@ -1,0 +1,18 @@
+# CI's "stage the stores" step copies these from the repo root into
+# app/src/main/assets/ on every build (see .github/workflows/apk.yml).
+# The root copies are the canonical source; the assets/ copies are
+# build output. Committing both meant the repo carried ~31 MB of exact
+# duplicates for no reason — same bytes, two paths.
+app/src/main/assets/words.blob
+app/src/main/assets/words.by_word
+app/src/main/assets/words.by_id
+app/src/main/assets/table3.btb
+app/src/main/assets/table3.btb.idx
+app/src/main/assets/grammar.tsv
+app/src/main/assets/seth_el.raw
+app/src/main/assets/seth_el.raw.u64
+app/src/main/assets/seth_el.post
+app/src/main/assets/seth_el.post.idx
+
+# Local build output, never meant to be committed.
+apk-out/
