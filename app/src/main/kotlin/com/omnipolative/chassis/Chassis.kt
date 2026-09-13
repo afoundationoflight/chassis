@@ -112,6 +112,14 @@ class Table(private val crawl: Crawler) {
         n = (byWord?.capacity() ?: 0) / 10
     }
 
+    // Read-only accessors so external residency checks (OccupancyTest)
+    // can touch the actual mapped buffers rather than reimplementing
+    // the mapping themselves — a second load path would risk mapping
+    // the same files twice or drifting from what boot() actually uses.
+    fun rawBlob(): java.nio.ByteBuffer? = blob
+    fun rawByWord(): java.nio.ByteBuffer? = byWord
+    fun rawById(): java.nio.ByteBuffer? = byId
+
     /** Binary search on utf8 bytes, in the mapped file. */
     fun id(w: String): Int {
         val bw = byWord ?: return 0
