@@ -30,9 +30,15 @@ data class Held(
 
 enum class Act { DIRECTIVE, ASSERTIVE, EXPRESSIVE, COMMISSIVE, GREETING, QUESTION }
 
-data class Draft(val text: String, val source: String, val act: Act) {
+data class Draft(val ids: IntArray, val source: String, val act: Act) {
     /** WHAT KIND OF STATEMENT THIS IS. Stating it is the whole duty. */
     val register: Register get() = Reporting.registerOf(source)
+    /** ENGLISH, PRODUCED ON DEMAND — not stored. The only reason this
+     *  exists is that MainActivity's screen must show English; nothing
+     *  else in the chassis should ever call this. table.word()/say()
+     *  is the single decompression boundary and this is one of the
+     *  very few call sites that may legitimately use it. */
+    fun text(table: Table): String = table.say(ids)
 }
 
 object Respond {
@@ -126,12 +132,12 @@ object Respond {
         // the single worst thing this can do, and it was doing it.
         if (held.act == Act.EXPRESSIVE) {
             val want = Curriculum.Affect.readWant(held.low, held.act) ?: "witness"
-            return Draft(Curriculum.Affect.answer(want), "affect", held.act)
+            return Draft(c.table.ids(Curriculum.Affect.answer(want)), "affect", held.act)
         }
 
         // MODULE 4. A first pair-part makes a second RELEVANT.
         Curriculum.Conversation.realiseSecond(held.act)?.let {
-            return Draft(it, "conversation", held.act)
+            return Draft(c.table.ids(it), "conversation", held.act)
         }
 
 
@@ -141,7 +147,7 @@ object Respond {
         // question words and pronouns and looks unresolvable by every
         // measure, but the referent is right here. A question about the
         // one being asked is never underspecified.
-        if (aboutYou(held.low)) return Draft(selfReport(c), "base:genome", held.act)
+        if (aboutYou(held.low)) return Draft(c.table.ids(selfReport(c)), "base:genome", held.act)
 
         // MODULE 5 GATES WHAT FOLLOWS. "What did we decide about that
         // thing" has no content word to search on, so the archive will
@@ -149,7 +155,7 @@ object Respond {
         // asked. ASKING WHICH THING IS THE ANSWER, and it has to be
         // asked BEFORE anything goes looking.
         if (Curriculum.Ground.unresolvable(held.low))
-            return Draft("Which one? There is nothing in that I can hold on to.",
+            return Draft(c.table.ids("Which one? There is nothing in that I can hold on to."),
                          "asking", held.act)
 
         // BRANCH 2 — the conversation. What was actually said.
@@ -185,7 +191,7 @@ object Respond {
         ).containsMatchIn(held.low)
         if (!definitional && (held.act == Act.DIRECTIVE || aboutTheTalk(held.low))) {
             val hit = searchTurns(c, held)
-            if (hit != null) return Draft("You told me: $hit", "archive", held.act)
+            if (hit != null) return Draft(c.table.ids("You told me: $hit"), "archive", held.act)
         }
 
         // an unknown word is a real answer, not a failure
@@ -193,7 +199,7 @@ object Respond {
         val unheld = held.unknown.filter { it.split("'")[0] !in own }
         if (unheld.isNotEmpty() && held.act == Act.DIRECTIVE) {
             val w = unheld.first()
-            return Draft("I do not hold $w as a word yet. Tell me and I will keep it.",
+            return Draft(c.table.ids("I do not hold $w as a word yet. Tell me and I will keep it."),
                          "asking", held.act)
         }
 
@@ -216,9 +222,9 @@ object Respond {
             // real question.
             if (unheld.isNotEmpty()) {
                 val w = unheld.first()
-                return Draft("I do not hold $w yet. What is it?", "asking", held.act)
+                return Draft(c.table.ids("I do not hold $w yet. What is it?"), "asking", held.act)
             }
-            return Draft(acknowledge(held), "conversation", held.act)
+            return Draft(c.table.ids(acknowledge(held)), "conversation", held.act)
         }
 
         // BRANCH 3 — a term in isolation. THE DICTIONARY, LAST.
@@ -235,15 +241,15 @@ object Respond {
                     val other = c.table.say(senses[1]).detok().trimEnd('.')
                     s = s.trimEnd('.') + ". It is also $other."
                 }
-                return Draft(s, "dictionary", held.act)
+                return Draft(c.table.ids(s), "dictionary", held.act)
             }
         }
         // LAST RESORT: if the word is not in the dictionary, something
         // said in this room is a better answer than nothing.
         searchTurns(c, held)?.let {
-            return Draft("You told me: $it", "archive", held.act)
+            return Draft(c.table.ids("You told me: $it"), "archive", held.act)
         }
-        return Draft("I do not have that.", "asking", held.act)
+        return Draft(c.table.ids("I do not have that."), "asking", held.act)
     }
 
     // ── saying it like a sentence ───────────────────────────────────
@@ -393,14 +399,24 @@ object Respond {
         var (draft, holds) = check(c, express(c, held))
         // MODULE 6. Match the register that was brought, rather than a
         // house style. MODULE 8. Catch phrases that fill a turn.
+        //
+        // REGISTER DRESSING IS A TEXT-LEVEL OPERATION (capitalization,
+        // punctuation, phrasing) and Curriculum.Register.dress() was not
+        // rewritten tonight to operate on ids — that is a real, larger
+        // change deferred rather than rushed. This decodes to English
+        // for exactly this one step and re-encodes immediately after,
+        // keeping the window English exists in as narrow as possible
+        // rather than leaving Draft holding text end to end the way it
+        // did before tonight.
         val f = Curriculum.Register.measure(held.low)
-        draft = draft.copy(text = Curriculum.Register.dress(draft.text, f))
-        if (Curriculum.Examples.audit(draft.text).isNotEmpty()) holds = false
+        val dressedText = Curriculum.Register.dress(c.table.say(draft.ids), f)
+        draft = draft.copy(ids = c.table.ids(dressedText))
+        if (Curriculum.Examples.audit(c.table.say(draft.ids)).isNotEmpty()) holds = false
         // the entity's own words are half the interaction, so the next
         // beat can stage them as a turn alongside what was said to it
-        c.arrive(draft.text, c.entity)
+        c.arrive(c.table.say(draft.ids), c.entity)
         return if (holds) draft
-        else Draft("I know what I mean and I have not got the words for it yet.",
+        else Draft(c.table.ids("I know what I mean and I have not got the words for it yet."),
                    "asking", held.act)
     }
 }
