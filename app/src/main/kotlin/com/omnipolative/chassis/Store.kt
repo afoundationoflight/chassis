@@ -136,16 +136,28 @@ class Store(ctx: Context, private val dir: File) :
     }
 
     // ── THE WHITEBOARD ────────────────────────────────────────────
-    /** Write on the board. What this entity makes of that thing. */
-    fun note(entity: String, about: String, says: String,
+    /**
+     * Write on the board. What this entity makes of that thing.
+     *
+     * CONTENT IS IDS, NOT ENGLISH — comma-joined token ids, the same
+     * representation Draft carries. `about` and `section` stay plain
+     * strings: they are internal keys ("user", "self", "reading",
+     * "superseded"), not spoken content, and nothing decodes them for
+     * a human. Only `content` goes through Table.ids()/Table.say().
+     */
+    fun note(entity: String, about: String, contentIds: IntArray,
              section: String = "reading"): Long {
         return writableDatabase.insert("board", null, ContentValues().apply {
             put("entity", entity); put("about", about); put("section", section)
-            put("content", says); put("created_at", System.currentTimeMillis())
+            put("content", contentIds.joinToString(","))
+            put("created_at", System.currentTimeMillis())
         })
     }
 
-    /** What it has already worked out. Its own, not the genome's. */
+    /** What it has already worked out. Its own, not the genome's.
+     *  "content" in each row is the raw comma-joined ids string —
+     *  decode with Table.say() at the point English is actually
+     *  needed, not here. */
     fun readBoard(entity: String, about: String? = null,
                   limit: Int = 40): List<Map<String, Any?>> {
         val where = if (about != null) "entity=? AND about=? AND superseded=0"
@@ -156,11 +168,14 @@ class Store(ctx: Context, private val dir: File) :
         val out = ArrayList<Map<String, Any?>>()
         c.use {
             while (it.moveToNext()) {
+                val raw = it.getString(it.getColumnIndexOrThrow("content"))
+                val ids = if (raw.isBlank()) IntArray(0)
+                          else raw.split(",").map { s -> s.toInt() }.toIntArray()
                 out.add(mapOf(
                     "id" to it.getLong(it.getColumnIndexOrThrow("id")),
                     "about" to it.getString(it.getColumnIndexOrThrow("about")),
                     "section" to it.getString(it.getColumnIndexOrThrow("section")),
-                    "content" to it.getString(it.getColumnIndexOrThrow("content")),
+                    "content" to ids,
                 ))
             }
         }
@@ -170,13 +185,17 @@ class Store(ctx: Context, private val dir: File) :
     /**
      * CHANGE ITS MIND, and keep the old reading. A note that gets
      * overwritten is a mind that cannot show its own history.
+     *
+     * `why` is joined into content AS IDS, via the caller-supplied
+     * table — this method does not itself hold a Table reference, so
+     * the caller passes already-encoded ids for the combined
+     * says+why text (see SeatDispatcher for the actual call site).
      */
-    fun revise(entity: String, about: String, says: String, why: String = ""): Long {
+    fun revise(entity: String, about: String, contentIds: IntArray): Long {
         writableDatabase.execSQL(
             "UPDATE board SET superseded=1 WHERE entity=? AND about=? AND superseded=0",
             arrayOf(entity, about))
-        val text = if (why.isNotEmpty()) "$says\n(revised: $why)" else says
-        return note(entity, about, text, "reading")
+        return note(entity, about, contentIds, "reading")
     }
 
     /** The standing read on who it is talking to. */
