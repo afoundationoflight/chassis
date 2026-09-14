@@ -167,8 +167,16 @@ class MainActivity : AppCompatActivity() {
                 // unreachable from the running app.
                 val dispatcher = SeatDispatcher(ch)
                 val results = ch.tongue.occupy(ch, dispatcher, t)
+                // THE SCREEN BOUNDARY. "spoken:1,2,3" is comma-joined
+                // ids (SeatDispatcher.dispatch's Speak case) — decoded
+                // to English HERE, the one place it is actually needed,
+                // not carried as text through the dispatch/result path.
                 val spoken = results.firstOrNull { it.detail.startsWith("spoken:") }
                     ?.detail?.removePrefix("spoken:")
+                    ?.let { raw ->
+                        if (raw.isBlank()) ""
+                        else ch.table.say(raw.split(",").map { it.toInt() }.toIntArray())
+                    }
                     ?: results.joinToString("; ") { it.detail }
                 Triple(spoken, "${ch.tongue.id}", e.tick)
             } catch (ex: Exception) {
