@@ -31,8 +31,11 @@ interface Tongue {
      */
     fun occupy(chassis: Chassis, dispatcher: SeatDispatcher, message: String): List<SeatActionResult> {
         val draft = Respond.drive(chassis, message)
-        val text = render(chassis, draft)
-        return listOf(dispatcher.dispatch(SeatAction.Speak(text)))
+        // SPEAK CARRIES IDS DIRECTLY — draft.ids is already the
+        // compressed representation; render() exists for producing
+        // English at the screen boundary, not for feeding back into
+        // another ids-carrying action.
+        return listOf(dispatcher.dispatch(SeatAction.Speak(draft.ids)))
     }
 }
 
