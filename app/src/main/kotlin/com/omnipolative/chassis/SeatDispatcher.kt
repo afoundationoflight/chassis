@@ -25,9 +25,12 @@ package com.omnipolative.chassis
  * mind is currently in the seat.
  */
 sealed class SeatAction {
-    data class Speak(val text: String) : SeatAction()
-    data class NoteWhiteboard(val key: String, val text: String) : SeatAction()
-    data class ReviseWhiteboard(val key: String, val text: String, val why: String = "") : SeatAction()
+    /** SPEAK CARRIES IDS, same as Draft. English is produced only when
+     *  actually rendered to the screen — MainActivity's job, not this
+     *  action's. */
+    data class Speak(val ids: IntArray) : SeatAction()
+    data class NoteWhiteboard(val key: String, val ids: IntArray) : SeatAction()
+    data class ReviseWhiteboard(val key: String, val ids: IntArray, val whyIds: IntArray = IntArray(0)) : SeatAction()
 }
 
 data class SeatActionResult(val ok: Boolean, val detail: String)
@@ -42,11 +45,10 @@ class SeatDispatcher(private val chassis: Chassis) {
         is SeatAction.Speak ->
             // Speaking commits nothing to the whiteboard by itself —
             // it is what MainActivity renders via the active Tongue.
-            // The spoken text is carried IN THE RESULT rather than
-            // requiring the caller to re-derive it (e.g. by calling
-            // Respond.drive a second time, which would double-append
-            // to turns via its arrive() side effect).
-            SeatActionResult(true, "spoken:${action.text}")
+            // The spoken IDS are carried IN THE RESULT (comma-joined,
+            // same encoding as Store.board's content column) rather
+            // than requiring the caller to re-derive them.
+            SeatActionResult(true, "spoken:${action.ids.joinToString(",")}")
 
         is SeatAction.NoteWhiteboard -> try {
             // SAME AUTHORSHIP RULE, no matter who is occupying. by is
@@ -56,7 +58,7 @@ class SeatDispatcher(private val chassis: Chassis) {
             // to author (see Bible.attach's NotYours check) and "which
             // mind is currently rendering it" is not the entity's
             // identity changing.
-            chassis.bible.attach(action.key, action.text, chassis.entity)
+            chassis.bible.attach(action.key, action.ids, chassis.entity)
             SeatActionResult(true, "noted: ${action.key}")
         } catch (e: NotYours) {
             SeatActionResult(false, "refused: ${e.message}")
@@ -74,7 +76,12 @@ class SeatDispatcher(private val chassis: Chassis) {
             if (store == null) {
                 SeatActionResult(false, "no Store attached — cannot revise")
             } else {
-                store.revise(chassis.entity, action.key, action.text, action.why)
+                // whyIds folded into the stored content as trailing ids
+                // rather than a separate column — content IS the ids
+                // stream, and "why" is part of what was said, not
+                // metadata about it.
+                val combined = action.ids + action.whyIds
+                store.revise(chassis.entity, action.key, combined)
                 SeatActionResult(true, "revised: ${action.key}")
             }
         } catch (e: Exception) {
@@ -89,6 +96,14 @@ class SeatDispatcher(private val chassis: Chassis) {
      * is the actual content either has to carry — deferred to
      * per-platform formatting once that request shape is decided, same
      * boundary already left open in Tongue.kt's DefaultHttpCaller.
+     *
+     * THE SCHEMA ITSELF STILL DESCRIBES "text" TO THE REMOTE MODEL —
+     * a remote API has no way to emit our ids without holding our
+     * dictionary (the whole point of the caching work earlier
+     * tonight), so what crosses the wire in a tool-call argument is
+     * English, encoded to ids by RemoteTongue immediately on receipt
+     * before it ever becomes a SeatAction. The action itself never
+     * holds English once constructed.
      */
     fun toolSchema(): List<ToolSpec> = listOf(
         ToolSpec("speak", "Say something to the user.",
