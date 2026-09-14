@@ -24,7 +24,7 @@ import kotlin.math.min
  */
 data class Attachment(
     val key: String,
-    val text: String,
+    val ids: IntArray,
     val authoredBy: String,
     val at: Long = System.currentTimeMillis(),
     val supersedes: String? = null,
@@ -50,7 +50,11 @@ class NotYours(msg: String) : Exception(msg)
  *  hold about itself": this class (never called, RAM-only) and
  *  Store.note()/readBoard() (persistent, no authorship or review
  *  logic, no supersession-with-flagging-under-load). Neither knew
- *  the other existed. */
+ *  the other existed.
+ *
+ *  IDS, NOT ENGLISH — same as Draft and Store.board. Attachment.text
+ *  became Attachment.ids; the only place English is produced from an
+ *  attachment is wherever it is displayed, via Table.say(). */
 class Bible(val entity: String, private var backing: Chassis.Chain? = null) {
     companion object { const val UNDER_LOAD = 0.65 }
 
@@ -66,18 +70,18 @@ class Bible(val entity: String, private var backing: Chassis.Chain? = null) {
      * attachment written by someone else is that person's statement
      * about the entity, which is a different kind of thing entirely.
      */
-    fun attach(key: String, text: String, by: String, load: Double = 0.0): Attachment {
+    fun attach(key: String, ids: IntArray, by: String, load: Double = 0.0): Attachment {
         if (by != entity) throw NotYours("$by cannot author ${entity}'s bible")
         val old = current[key]
         if (old != null) superseded.add(old)
-        val a = Attachment(key, text, by, supersedes = old?.key,
+        val a = Attachment(key, ids, by, supersedes = old?.key,
                            madeUnderLoad = if (load >= UNDER_LOAD) load else null)
         current[key] = a
         // PERSIST. The whiteboard the seat authors has to survive a
         // process death the same way the archive does — an attachment
         // that only lives in RAM is a self-concept that resets every
         // cold start, which defeats the entire point of a bible.
-        boardStore?.note(entity, key, text,
+        boardStore?.note(entity, key, ids,
                          if (a.needsReview) "under_review" else "reading")
         return a
     }
@@ -85,15 +89,17 @@ class Bible(val entity: String, private var backing: Chassis.Chain? = null) {
     /** What the entity wrote under load and has not looked at since. */
     fun forReview(): List<Attachment> = current.values.filter { it.needsReview }
 
-    /** Affirm or retract, deliberately, when not under load. */
-    fun review(key: String, affirm: Boolean, by: String) {
+    /** Affirm or retract, deliberately, when not under load.
+     *  `table` is needed only to encode the fixed "(retracted)" marker
+     *  — the one place this method still has to touch English, kept
+     *  to a single literal rather than growing. */
+    fun review(key: String, affirm: Boolean, by: String, table: Table) {
         if (by != entity) throw NotYours("$by cannot review ${entity}'s bible")
         val a = current[key] ?: return
         a.affirmed = affirm
         if (!affirm) { superseded.add(a); current.remove(key) }
         boardStore?.revise(entity, key,
-            if (affirm) a.text else "(retracted)",
-            why = if (affirm) "affirmed on review" else "retracted on review")
+            if (affirm) a.ids else table.ids("(retracted)"))
     }
 
     /** SUPERSEDED IS KEPT. What an entity used to hold about itself is
@@ -112,9 +118,9 @@ class Bible(val entity: String, private var backing: Chassis.Chain? = null) {
         boardStore = store
         for (row in store.readBoard(entity)) {
             val key = row["about"] as? String ?: continue
-            val text = row["content"] as? String ?: continue
+            val ids = row["content"] as? IntArray ?: continue
             if (!current.containsKey(key))
-                current[key] = Attachment(key, text, entity)
+                current[key] = Attachment(key, ids, entity)
         }
     }
 
