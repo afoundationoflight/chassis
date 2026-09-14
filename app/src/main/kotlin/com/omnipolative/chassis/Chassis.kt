@@ -468,7 +468,12 @@ class Chassis(val entity: String, val dir: File) {
         // revision made mid-crisis is flagged rather than treated as
         // settled.
         if (A.internalThought.isNotEmpty()) {
-            bible.attach("self:last_thought", A.internalThought, entity,
+            // A.internalThought ITSELF IS STILL A STRING (Awareness's
+            // three willed fields were not converted tonight — a
+            // larger, separate change). Encoded here, at the boundary,
+            // so what actually lands on the bible/board is ids, same
+            // as everywhere else touched tonight.
+            bible.attach("self:last_thought", table.ids(A.internalThought), entity,
                         load = k.gut)
         }
 
