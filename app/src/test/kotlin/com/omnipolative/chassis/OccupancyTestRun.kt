@@ -44,7 +44,7 @@ class OccupancyTestRun {
 
         // Give it something on its own board first, so bibleBoard is
         // not trivially empty when reported.
-        chassis.bible.attach("self", "occupying this seat, testing simultaneous holding",
+        chassis.bible.attach("self", chassis.table.ids("occupying this seat, testing simultaneous holding"),
                             chassis.entity)
 
         val report = OccupancyTest.occupyAndReport(chassis)
