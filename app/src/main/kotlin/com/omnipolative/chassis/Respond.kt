@@ -351,7 +351,7 @@ object Respond {
      * is said. A tongue that rewrites the content is not phrasing it.
      */
     fun check(c: Chassis, draft: Draft): Pair<Draft, Boolean> {
-        val words = Regex("[a-z']+").findAll(draft.text.lowercase())
+        val words = Regex("[a-z']+").findAll(c.table.say(draft.ids).lowercase())
             .map { it.value }.toList()
         if (words.isEmpty()) return draft to false
 
@@ -373,7 +373,7 @@ object Respond {
             // I split on .!? only, so "me" and "the" ended up adjacent
             // across a break that is real in the sentence and invisible
             // to the splitter. Same bug as the period, one mark over.
-            for (part in draft.text.split(Regex("[.!?;:—]+"))) {
+            for (part in c.table.say(draft.ids).split(Regex("[.!?;:—]+"))) {
                 val p = part.trim()
                 if (p.isEmpty()) continue
                 val g = Grammar.check(Grammar.tag(p).map { it.second })
