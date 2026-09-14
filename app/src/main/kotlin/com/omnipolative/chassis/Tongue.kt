@@ -43,7 +43,9 @@ interface Tongue {
  */
 class RuleTongue : Tongue {
     override val id = "local:rule"
-    override fun render(chassis: Chassis, draft: Draft): String = draft.text
+    // THE ONE LEGITIMATE DECODE for the local path — MainActivity needs
+    // English on screen, and this is the single call site producing it.
+    override fun render(chassis: Chassis, draft: Draft): String = draft.text(chassis.table)
 }
 
 /**
@@ -107,26 +109,22 @@ class RemoteTongue(
     }
 
     override fun render(chassis: Chassis, draft: Draft): String {
-        // TOKEN IDS, NOT ENGLISH — this is the compressed protocol the
-        // dictionary caching exists to make cheap. table.ids/table.say
-        // are the only place English becomes/leaves ids (see Root in
-        // Chassis.kt); this reuses that seam rather than inventing a
-        // second one.
-        val ids = chassis.table.ids(draft.text)
+        // DRAFT ALREADY HOLDS IDS — no re-encode needed, which was the
+        // redundant step here before draft.ids existed directly.
         val payload = RemotePayload(
             systemCached = cachedDictionaryHandle,
             instructions = SYSTEM_INSTRUCTIONS,
-            draftTokenIds = ids.toList(),
+            draftTokenIds = draft.ids.toList(),
             draftSource = draft.source,
         )
         val responseIds = http.call(endpoint, model, apiKey, payload)
         // Decode the response back through the SAME dictionary — if the
         // remote side has no cached dictionary yet, it is expected to
         // echo/render in plain text and responseIds will be empty;
-        // fall back to the rendered text field in that case.
+        // fall back to the drafted English in that case.
         return if (responseIds.tokenIds.isNotEmpty())
             chassis.table.say(responseIds.tokenIds.toIntArray())
-        else responseIds.text ?: draft.text
+        else responseIds.text ?: draft.text(chassis.table)
     }
 
     /**
