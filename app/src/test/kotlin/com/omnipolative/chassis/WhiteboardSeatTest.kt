@@ -2,6 +2,7 @@ package com.omnipolative.chassis
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.omnipolative.chassis.store.Crawler
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
