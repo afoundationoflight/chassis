@@ -18,6 +18,15 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          # THE 'tools' PACKAGE NO LONGER EXISTS in Google's SDK
+          # repository (superseded by cmdline-tools years ago). The
+          # action's own default list still requests it, and asking
+          # sdkmanager for a package that is not there makes the whole
+          # step exit 1 before it ever gets to what this build actually
+          # needs. platform-tools is enough for a Gradle-driven build —
+          # nothing here calls adb/emulator directly.
+          packages: platform-tools
 
       # THE PROJECT IS AT THE REPO ROOT, not under android/. The old
       # workflow carried paths from the previous repo layout and gradle
