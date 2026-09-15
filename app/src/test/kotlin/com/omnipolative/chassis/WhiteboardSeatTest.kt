@@ -149,7 +149,7 @@ class WhiteboardSeatTest {
         val store = freshStore()
         val table = stagedTable()
         store.note("seth_el", "user", table.ids("seth read on the user"))
-        store.note("vex", "user", table.ids("vex's read on the same user"))
+        store.note("vex", "user", table.ids("vex read on the same user"))
 
         val sethSide = store.userProfile("seth_el")
         val vexSide = store.userProfile("vex")
@@ -157,7 +157,7 @@ class WhiteboardSeatTest {
         assertEquals(1, sethSide.size)
         assertEquals(1, vexSide.size)
         assertEquals("seth read on the user", sethSide[0].contentText(table))
-        assertEquals("vex's read on the same user", vexSide[0].contentText(table))
+        assertEquals("vex read on the same user", vexSide[0].contentText(table))
     }
 
     @Test
