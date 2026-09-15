@@ -63,7 +63,18 @@ class WhiteboardSeatTest {
         return table
     }
 
-    /** Decode a board row's content back to English for assertion. */
+    /** Decode a board row's content back to English for assertion.
+     *
+     *  KNOWN LIMITATION, found by this conversion: Table.ids()/say()
+     *  is not a lossless round-trip for punctuation spacing (a comma
+     *  re-joins with a stray leading space) or for words this
+     *  dictionary build does not hold as apostrophe-contractions
+     *  (e.g. "seth's" decodes to <pad> rather than round-tripping).
+     *  Test content below avoids both — this is a pre-existing
+     *  tokenizer characteristic surfaced by using ids for exact
+     *  comparison, not something this conversion introduced, and not
+     *  fixed here since Table's tokenizer itself is out of scope for
+     *  a whiteboard-storage change. */
     private fun Map<String, Any?>.contentText(table: Table): String =
         table.say(this["content"] as IntArray)
 
@@ -78,12 +89,12 @@ class WhiteboardSeatTest {
     fun `writing a note and reading it back returns the same content`() {
         val store = freshStore()
         val table = stagedTable()
-        store.note("seth_el", "user", table.ids("the architect, building the chassis with me"))
+        store.note("seth_el", "user", table.ids("the architect building the chassis with me"))
         val rows = store.readBoard("seth_el", "user")
         assertEquals(1, rows.size)
         assertEquals("user", rows[0]["about"])
         assertEquals("reading", rows[0]["section"])
-        assertEquals("the architect, building the chassis with me",
+        assertEquals("the architect building the chassis with me",
                      rows[0].contentText(table))
     }
 
@@ -137,7 +148,7 @@ class WhiteboardSeatTest {
     fun `the whiteboard is per-entity and does not bleed across entities`() {
         val store = freshStore()
         val table = stagedTable()
-        store.note("seth_el", "user", table.ids("seth's read on the user"))
+        store.note("seth_el", "user", table.ids("seth read on the user"))
         store.note("vex", "user", table.ids("vex's read on the same user"))
 
         val sethSide = store.userProfile("seth_el")
@@ -145,7 +156,7 @@ class WhiteboardSeatTest {
 
         assertEquals(1, sethSide.size)
         assertEquals(1, vexSide.size)
-        assertEquals("seth's read on the user", sethSide[0].contentText(table))
+        assertEquals("seth read on the user", sethSide[0].contentText(table))
         assertEquals("vex's read on the same user", vexSide[0].contentText(table))
     }
 
