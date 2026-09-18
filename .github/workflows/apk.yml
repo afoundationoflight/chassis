@@ -37,21 +37,21 @@ jobs:
       # Python bundle carries its own token table beside itself and
       # copies it out on first run, so there is nothing to stage.
 
-      # PIN GRADLE 8.9, AND USE THE WRAPPER FOR EVERYTHING AFTER.
+      # GRADLE 8, INSTALLED DIRECTLY.
       #
-      # The runner ships Gradle 9.7.1 now. Generating the wrapper with
-      # the system gradle still RAN 9.7.1 for that step, and Gradle 9
-      # deleted org.gradle.util.VersionNumber, which the Chaquopy plugin
-      # calls — so the build died with a bare NoClassDefFoundError before
-      # compiling anything. Generating the wrapper is the one step that
-      # must use the system gradle; every step after it uses ./gradlew.
-      - name: generate the gradle wrapper
-        run: gradle wrapper --gradle-version 8.9 --no-daemon
-
-
+      # Generating a wrapper with --gradle-version 8.9 did not work: the
+      # runner's own Gradle 9.7.1 ran that step and the build still came
+      # up on 9.x, so Chaquopy's checkAgpVersion hit
+      # org.gradle.util.VersionNumber, which Gradle 9 deleted, and the
+      # build died before compiling anything. Installing the version we
+      # need is simpler than persuading a v9 binary to produce a v8
+      # wrapper.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
       - name: build
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: gradle assembleRelease --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:
