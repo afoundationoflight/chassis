@@ -30,12 +30,12 @@ android {
         // here so the emulator works for anyone developing on a laptop.
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
 
-        python {
-            // The bundle needs nothing from pip. Its whole point is that
-            // it is self-contained: 165 modules in one file, with the
-            // language as a brotli asset beside it.
-            pip { }
-        }
+        // NO python { } BLOCK. In the Kotlin DSL that extension is not
+        // resolvable inside defaultConfig, and this build does not need
+        // it: the bundle installs nothing from pip. Its whole point is
+        // being self-contained — 165 modules in one file, with the
+        // language as a brotli asset beside it. Chaquopy picks up
+        // app/src/main/python/ on its own.
     }
 
     sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
