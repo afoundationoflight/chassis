@@ -7,11 +7,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name="com.chaquo.python.android.PyApplication"
         android:label="Chassis"
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
         android:supportsRtl="true">
         <activity
-            android:name=".MainActivity"
+            android:name=".PyActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
