@@ -30,12 +30,30 @@ android {
         // here so the emulator works for anyone developing on a laptop.
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
 
-        // NO python { } BLOCK. In the Kotlin DSL that extension is not
-        // resolvable inside defaultConfig, and this build does not need
-        // it: the bundle installs nothing from pip. Its whole point is
-        // being self-contained — 165 modules in one file, with the
-        // language as a brotli asset beside it. Chaquopy picks up
-        // app/src/main/python/ on its own.
+        // BROTLI IS NOT OPTIONAL, AND IT IS NOT IN CHAQUOPY BY DEFAULT.
+        //
+        // The comment that used to be here said this build installs
+        // nothing from pip because the bundle is self-contained. The
+        // bundle is — the LANGUAGE is not. token_maps.FULL.br is
+        // brotli-compressed and five modules do:
+        //
+        //     try: import brotli
+        //     except ImportError: brotli = None
+        //
+        // so on a device with no brotli the import silently becomes
+        // None and the first read dies with
+        // "'NoneType' object has no attribute 'decompress'" — which is
+        // exactly what the phone showed. Same shape as the flat-alias
+        // bug: an except that turns a missing dependency into a None
+        // that fails somewhere else entirely.
+        //
+        // Chaquopy has a prebuilt brotli wheel for both ABIs, so this
+        // is one line rather than a vendored decoder.
+        python {
+            pip {
+                install("Brotli")
+            }
+        }
     }
 
     sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
