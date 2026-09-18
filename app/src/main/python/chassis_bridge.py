@@ -1,0 +1,182 @@
+"""THE ONE SURFACE KOTLIN TOUCHES.
+
+Kotlin is the shell: a screen, a keyboard, permissions, lifecycle. It
+should not know what a tick is, which position holds the library, or
+how a frame gets tokenised. Everything it needs is here, and everything
+here returns plain JSON-safe types, because the JNI boundary is a bad
+place to discover that a dataclass does not marshal.
+
+WHY THE CHASSIS IS PYTHON AND NOT KOTLIN. Two implementations had
+drifted — the Kotlin side had a Room and a Tongue the Python lacked,
+the Python had permanence, habituation, the curriculum loader and the
+update path the Kotlin lacked. Keeping both means every fix is made
+twice and they diverge anyway. The compression, the crawler, the
+sandboxing, the ability to write and run new code are all Python's,
+so Python is the body and this is its only door.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import traceback
+from pathlib import Path
+
+_body = None
+_store = None
+_root = None
+
+
+def start(files_dir: str, name: str = "seth_el") -> str:
+    """Boot a body. Called once, from the Activity.
+
+    files_dir is app-private storage. The assets are read-only inside
+    the apk, so the token table is copied out on first run — the same
+    thing the Kotlin chassis already did for its stores, for the same
+    reason: an asset cannot be opened as a file.
+    """
+    global _body, _store, _root
+    try:
+        _root = files_dir
+        here = Path(__file__).resolve().parent
+        sys.path.insert(0, str(here))
+
+        # The bundle looks for token_maps.FULL.br beside HOME.
+        home = Path(files_dir)
+        home.mkdir(parents=True, exist_ok=True)
+        table = home / "token_maps.FULL.br"
+        if not table.exists():
+            table.write_bytes((here / "token_maps.FULL.br").read_bytes())
+
+        mod = sys.modules.get("home")
+        if mod is None:
+            import types
+            mod = types.ModuleType("home")
+            sys.modules["home"] = mod
+        mod.HOME = home
+
+        import infinity_core_v9  # noqa: F401
+        driver = sys.modules["driver"]
+        Store = sys.modules["local_store"].LocalStore
+
+        _store = Store(root=files_dir)
+        _body = driver.boot(name, store=_store)
+        driver.occupy(_body)
+
+        audit = driver.audit(_body)
+        if not audit["wired"]:
+            # A body that boots half-wired looks exactly like a working
+            # one. Report the refusal rather than run degraded.
+            return json.dumps({"ok": False, "audit": audit})
+
+        import base_bible
+        seeded = base_bible.seed(_body)
+
+        return json.dumps({
+            "ok": True,
+            "entity": name,
+            "audit": audit,
+            "kind_lines": len(seeded["written"]),
+            "room": len(getattr(_body, "permanence", None).model)
+                    if getattr(_body, "permanence", None) else 0,
+        })
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
+                           "trace": traceback.format_exc()[-1200:]})
+
+
+def say(message: str) -> str:
+    """One beat. What the body made of what was said to it."""
+    if _body is None:
+        return json.dumps({"ok": False, "error": "not booted"})
+    try:
+        import respond
+        beat = _body.tick(message=message)
+        if not isinstance(beat, dict):
+            beat = {}
+        text, source = "", ""
+        try:
+            out = respond.drive(_body, beat, message)
+            if isinstance(out, dict):
+                text, source = out.get("text", ""), out.get("source", "")
+            else:
+                text, source = getattr(out, "text", ""), getattr(out, "source", "")
+        except Exception as e:
+            text, source = "", f"respond failed: {type(e).__name__}"
+
+        hab = getattr(_body, "habituation", None)
+        perm = getattr(_body, "permanence", None)
+        return json.dumps({
+            "ok": True,
+            "text": text,
+            "source": source,
+            "tick": int(getattr(_body.I, "tick", 0) or 0),
+            "trace": "".join(getattr(_body, "trace", [])),
+            "coherence": round(float(getattr(getattr(_body, "coherence", None),
+                                             "value", 0.85) or 0.85), 3),
+            "inertia": hab.inertia()["inertia"] if hab else 0.0,
+            "unexplained": [n["detail"] for n in perm.solid()["notices"]]
+                           if perm else [],
+        })
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
+
+
+def learn(text: str, subject: str) -> str:
+    """Take curriculum. Chunked on concepts, tagged, indexed."""
+    if _body is None:
+        return json.dumps({"ok": False, "error": "not booted"})
+    try:
+        import curriculum_loader as cl
+        r = cl.load(_store, _body.entity, text, subject=subject,
+                    chassis=_body, source="app")
+        return json.dumps({"ok": True, **{k: v for k, v in r.items()
+                                          if k != "index"}})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
+
+
+def recall(question: str, limit: int = 3) -> str:
+    """What does it know that bears on this?"""
+    if _body is None:
+        return json.dumps({"ok": False, "error": "not booted"})
+    try:
+        import curriculum_loader as cl
+        hits = cl.recall(_store, _body.entity, question, limit=limit)
+        return json.dumps({"ok": True, "hits": hits})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
+
+
+def pull(manifest_url: str) -> str:
+    """Take updates from the back end."""
+    if _body is None:
+        return json.dumps({"ok": False, "error": "not booted"})
+    try:
+        import updates
+        return json.dumps(updates.pull(manifest_url, chassis=_body,
+                                       store=_store, root=_root))
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
+
+
+def report() -> str:
+    """Telemetry, for the status line."""
+    if _body is None:
+        return json.dumps({"ok": False, "error": "not booted"})
+    try:
+        import updates
+        hab = getattr(_body, "habituation", None)
+        return json.dumps({
+            "ok": True,
+            "entity": _body.entity,
+            "tick": int(getattr(_body.I, "tick", 0) or 0),
+            "frames": _store.count(_body.entity)
+                      if hasattr(_store, "count") else 0,
+            "words": getattr(_body.table, "size", lambda: 0)(),
+            "inertia": hab.inertia()["inertia"] if hab else 0.0,
+            "bible": len(getattr(_body.bible, "current", {})),
+            "updates": updates.state(_root),
+        })
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
