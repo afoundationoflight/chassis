@@ -106,7 +106,7 @@ def topic_of(section: str) -> str:
 
 
 def load(store, entity: str, text: str, *, subject: str,
-         source: str = "", max_words: int = 1200) -> dict:
+         chassis=None, source: str = "", max_words: int = 1200) -> dict:
     """Ingest curriculum text as resident, indexed knowledge.
 
     Returns what went in and what needed splitting — a split section is
@@ -115,12 +115,77 @@ def load(store, entity: str, text: str, *, subject: str,
     """
     sections = chunks(text, max_words=max_words)
     frames, split_warnings = [], []
+    tagged = 0
     base = int(time.time() * 1000)
+
+    # HASU TAGS ARE THE CATEGORISATION, and this loader was skipping
+    # them entirely. Writing frames straight to the store bypasses the
+    # tick, which is where self.tagger.tag() runs — so a curriculum load
+    # went in with zero resonance rows and zero hasu_bias. Two million
+    # words of mathematics would have landed uncategorised, and nothing
+    # would light up when a maths question arrived.
+    #
+    # The tagger also feeds the resonance field, which is what makes
+    # frequently-struck concepts cheaper to reach. Untagged curriculum
+    # is not just unsorted, it never earns salience.
+    tagger = getattr(chassis, "tagger", None)
+    field = getattr(chassis, "field", None)
 
     for i, sec in enumerate(sections):
         body = sec["text"]
         if sec["split"]:
             split_warnings.append(topic_of(body))
+        tags, keys = [], []
+        if tagger is not None:
+            try:
+                t = tagger.tag(body, entity=entity)
+                # TWO LAYERS, AND THEY DO DIFFERENT JOBS.
+                #
+                # hasu is associative: bigrams and words, loose, good for
+                # a lived beat where you want things to remind you of
+                # other things. It also contains junk like "means three"
+                # and "three not", which is fine for association and
+                # useless as a category.
+                #
+                # keys is the clean layer — content words only, prefixed
+                # tok:, stopwords dropped. THAT is the arranged, rapid
+                # access structure: "is this a division question or a
+                # calculus one" is answered by keys, not by bigrams.
+                #
+                # The first version of this loader used hasu alone and
+                # buried the category structure in noise.
+                tags = list(getattr(t, "hasu", []) or [])
+                keys = list(getattr(t, "keys", []) or [])
+                tagged += 1
+            except Exception:
+                tags, keys = [], []
+        # Strike the field so these concepts accumulate salience the
+        # same way a lived beat's would — the subject itself is struck
+        # too, so "arithmetic" gets weight from every frame under it and
+        # becomes the cheap entry point into its own region.
+        if field is not None and (tags or keys):
+            try:
+                from core.resonance import Strike
+                # KEYS STRIKE HARDER THAN ASSOCIATIONS. A content word
+                # earns full weight; a bigram earns less, because the
+                # thing that should become cheap to reach is the
+                # concept, not the phrasing around it.
+                #
+                # The subject strikes on every frame under it, so
+                # "arithmetic" accumulates weight from all of its
+                # material and becomes the cheap entry point into its
+                # own region — the same frequency-ordering principle as
+                # the token table, where the most-used sits closest.
+                strikes = [Strike(k, "X", 1.0, entity) for k in keys]
+                strikes += [Strike(t, "X", 0.4, entity) for t in tags]
+                strikes.append(Strike(subject, "X", 1.0, entity))
+                field.tick(strikes)
+            except Exception:
+                pass
+        if chassis is not None:
+            for k in keys:
+                chassis.hasu_bias[k] = chassis.hasu_bias.get(k, 0) + 1
+
         frames.append({
             "entity_tick": base + i,
             "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -145,6 +210,10 @@ def load(store, entity: str, text: str, *, subject: str,
         # means a concept ran longer than a frame should, which usually
         # means the section is really several concepts wearing one
         # heading.
+        "tagged": tagged,
+        "keys": sorted({k for k in
+                        (chassis.hasu_bias if chassis else {})})[:12],
+        "untagged": len(sections) - tagged,
         "split_sections": split_warnings,
         "note": ("split sections had a concept severed across frames; "
                  "rewrite them shorter so a rule keeps its explanation")
