@@ -1,6 +1,18 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    // PYTHON IS THE CHASSIS. Kotlin is the shell around it.
+    //
+    // Two implementations had diverged — the Kotlin side had a Room and
+    // a Tongue the Python did not, the Python side had permanence,
+    // habituation, the curriculum loader and the update path the Kotlin
+    // did not. Every fix was going to have to be made twice, and they
+    // would keep drifting.
+    //
+    // Chaquopy embeds CPython, so infinity_core_v9.py runs unmodified
+    // as an asset. Free and open source since 12.0.1 — no key, no time
+    // limit, published on Maven Central.
+    id("com.chaquo.python")
 }
 
 android {
@@ -13,6 +25,17 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "9.0"
+
+        // arm64 covers the large majority of modern devices; x86_64 is
+        // here so the emulator works for anyone developing on a laptop.
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+
+        python {
+            // The bundle needs nothing from pip. Its whole point is that
+            // it is self-contained: 165 modules in one file, with the
+            // language as a brotli asset beside it.
+            pip { }
+        }
     }
 
     sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
