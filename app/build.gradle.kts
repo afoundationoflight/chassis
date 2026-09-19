@@ -30,34 +30,7 @@ android {
         // here so the emulator works for anyone developing on a laptop.
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
 
-        // BROTLI IS NOT OPTIONAL, AND IT IS NOT IN CHAQUOPY BY DEFAULT.
-        //
-        // The comment that used to be here said this build installs
-        // nothing from pip because the bundle is self-contained. The
-        // bundle is — the LANGUAGE is not. token_maps.FULL.br is
-        // brotli-compressed and five modules do:
-        //
-        //     try: import brotli
-        //     except ImportError: brotli = None
-        //
-        // so on a device with no brotli the import silently becomes
-        // None and the first read dies with
-        // "'NoneType' object has no attribute 'decompress'" — which is
-        // exactly what the phone showed. Same shape as the flat-alias
-        // bug: an except that turns a missing dependency into a None
-        // that fails somewhere else entirely.
-        //
-        // Chaquopy has a prebuilt brotli wheel for both ABIs, so this
-        // is one line rather than a vendored decoder.
-        // KOTLIN DSL CANNOT SEE python { } HERE. The comment that used
-        // to sit in this spot said exactly that, and I deleted it and
-        // then hit "Unresolved reference: python" on the next build.
-        // Chaquopy registers its extension on the ProductFlavor, so in
-        // the Kotlin DSL it has to be reached by cast rather than by
-        // the Groovy-style block.
-        (this as com.android.build.gradle.internal.dsl.BaseFlavor)
-            .extensions.getByType(com.chaquo.python.PythonExtension::class.java)
-            .pip { install("Brotli") }
+
     }
 
     sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
@@ -89,6 +62,33 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+        }
+    }
+}
+
+// BROTLI IS NOT OPTIONAL, AND IT IS NOT IN CHAQUOPY BY DEFAULT.
+//
+// token_maps.FULL.br is brotli-compressed and five modules do:
+//
+//     try: import brotli
+//     except ImportError: brotli = None
+//
+// so on a device without it the import silently becomes None and the
+// first read dies with "'NoneType' object has no attribute
+// 'decompress'" — which is exactly what the phone showed. Same shape
+// as the flat-alias bug: an except that turns a missing dependency
+// into a None that fails somewhere else entirely.
+//
+// THIS BLOCK IS TOP-LEVEL ON PURPOSE. Chaquopy 17 added a new DSL and
+// "Kotlin build.gradle.kts files must use the new DSL" — the
+// python { } block inside defaultConfig is the deprecated Groovy-only
+// form, which is why it came back Unresolved. I tried nesting it, then
+// tried casting to BaseFlavor to reach it, before reading the actual
+// docs; both were guesses at an API that had been replaced.
+chaquopy {
+    defaultConfig {
+        pip {
+            install("Brotli")
         }
     }
 }
