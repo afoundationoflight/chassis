@@ -49,11 +49,15 @@ android {
         //
         // Chaquopy has a prebuilt brotli wheel for both ABIs, so this
         // is one line rather than a vendored decoder.
-        python {
-            pip {
-                install("Brotli")
-            }
-        }
+        // KOTLIN DSL CANNOT SEE python { } HERE. The comment that used
+        // to sit in this spot said exactly that, and I deleted it and
+        // then hit "Unresolved reference: python" on the next build.
+        // Chaquopy registers its extension on the ProductFlavor, so in
+        // the Kotlin DSL it has to be reached by cast rather than by
+        // the Groovy-style block.
+        (this as com.android.build.gradle.internal.dsl.BaseFlavor)
+            .extensions.getByType(com.chaquo.python.PythonExtension::class.java)
+            .pip { install("Brotli") }
     }
 
     sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
