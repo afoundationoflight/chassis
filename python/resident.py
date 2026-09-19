@@ -55,28 +55,76 @@ def _mb(n) -> float:
 
 
 def device() -> dict:
-    """What this body is running on. Honest when there is no GPU.
+    """What this body is running on. ANDROID IS NOT CUDA.
 
-    Checked in order of what is actually likely on the targets: torch
-    (desktop/server), then Android's NNAPI-adjacent runtimes. Absence
-    is reported plainly rather than papered over — a body that claims a
-    GPU it does not have will size its holdings for memory that is not
-    there.
+    The first version of this asked torch.cuda.is_available() and
+    reported "cpu" on a phone that has a perfectly good Adreno or Mali
+    in it. That check is the desktop question. Android reaches its GPU
+    through NNAPI (the unified interface to CPU, GPU and NN
+    accelerators, 8.1+) or Vulkan compute, and neither answers to
+    torch.cuda.
+
+    WHAT A GPU IS AND IS NOT GOOD FOR HERE, stated plainly because the
+    honest answer shapes what gets put on it:
+
+      NOT the lexicon. Dictionary lookup is pointer-chasing and set
+      membership. GPUs are bad at exactly that, and moving a hash table
+      into VRAM makes it slower. Held in RAM is correct for the table,
+      and it is 36 MB, which is nothing.
+
+      YES a renderer at the tongue. That is matrix arithmetic, which is
+      the thing GPUs exist for, and it is what the 2 GB budget was
+      sized against. There is no model in this build yet, so there is
+      nothing to put there — but the device is found and reported so
+      the moment there is one, it knows where to go.
     """
-    found = {"kind": "cpu", "name": None, "total_mb": None, "why": None}
+    out = {"kind": "cpu", "name": None, "api": None, "total_mb": None,
+           "usable_for": [], "why": None}
+
+    # ANDROID FIRST, because that is the target that has been failing.
+    try:
+        from java import jclass  # Chaquopy: present only on Android
+        try:
+            Build = jclass("android.os.Build")
+            out["name"] = f"{Build.MANUFACTURER} {Build.MODEL}"
+        except Exception:
+            pass
+        api = None
+        try:
+            api = int(jclass("android.os.Build$VERSION").SDK_INT)
+        except Exception:
+            pass
+        # NNAPI is 8.1+ (API 27). Below that the GPU is still there but
+        # not reachable this way.
+        if api and api >= 27:
+            out.update(kind="android-gpu", api=f"NNAPI (SDK {api})",
+                       usable_for=["tensor math at the tongue"],
+                       why="present; nothing to run on it until there "
+                           "is a renderer")
+        else:
+            out.update(kind="android-cpu", api=f"SDK {api}",
+                       why="NNAPI needs 8.1+")
+        return out
+    except ImportError:
+        pass
+
+    # DESKTOP / SERVER.
     try:
         import torch  # noqa
         if torch.cuda.is_available():
             p = torch.cuda.get_device_properties(0)
-            return {"kind": "cuda", "name": p.name,
-                    "total_mb": _mb(p.total_memory), "why": None}
-        if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
-            return {"kind": "mps", "name": "apple", "total_mb": None,
+            return {"kind": "cuda", "name": p.name, "api": "cuda",
+                    "total_mb": _mb(p.total_memory),
+                    "usable_for": ["tensor math at the tongue"],
                     "why": None}
-        found["why"] = "torch present, no accelerator"
+        if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+            return {"kind": "mps", "name": "apple", "api": "metal",
+                    "total_mb": None,
+                    "usable_for": ["tensor math at the tongue"], "why": None}
+        out["why"] = "torch present, no accelerator"
     except ImportError:
-        found["why"] = "no torch on this device"
-    return found
+        out["why"] = "no torch and not android — cpu only"
+    return out
 
 
 class Resident:
