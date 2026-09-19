@@ -41,12 +41,25 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         here = Path(__file__).resolve().parent
         sys.path.insert(0, str(here))
 
-        # The bundle looks for token_maps.FULL.br beside HOME.
+        # EVERYTHING THE BODY HOLDS, STAGED OUT OF THE APK.
+        #
+        # This copied token_maps.FULL.br by name. When the two halves of
+        # the table were merged into lexicon.BITL.br and the old files
+        # dropped, this still asked for the deleted one and the boot
+        # died on FileNotFoundError — I removed a file and left the code
+        # that stages it.
+        #
+        # Named as a set now, so adding a holding is one entry and not a
+        # second place to forget. grammar.tsv is here for the same
+        # reason the lexicon is: curriculum_resident refuses to run
+        # without it, and it cannot be read from inside the apk.
         home = Path(files_dir)
         home.mkdir(parents=True, exist_ok=True)
-        table = home / "token_maps.FULL.br"
-        if not table.exists():
-            table.write_bytes((here / "token_maps.FULL.br").read_bytes())
+        for asset in ("lexicon.BITL.br", "grammar.tsv"):
+            dest = home / asset
+            src = here / asset
+            if not dest.exists() and src.exists():
+                dest.write_bytes(src.read_bytes())
 
         mod = sys.modules.get("home")
         if mod is None:
