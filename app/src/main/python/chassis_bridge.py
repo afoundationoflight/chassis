@@ -56,7 +56,8 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         # without it, and it cannot be read from inside the apk.
         home = Path(files_dir)
         home.mkdir(parents=True, exist_ok=True)
-        for asset in ("lexicon.BITL.br", "grammar.tsv"):
+        for asset in ("lexicon.BITL.br", "grammar.tsv",
+                      "curriculum_grammar.md", "curriculum_usage.md"):
             dest = home / asset
             src = here / asset
             if not dest.exists() and src.exists():
@@ -93,6 +94,29 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         # each reachable and none of them were forced resident. The
         # Architect's design is that they are held SIMULTANEOUSLY, and
         # the device is where that happens to sit, not whether it does.
+        # THE TWO CURRICULA ARE GENOME, not an optional load.
+        #
+        # Eight pragmatics processors are CODE that performs pragmatics
+        # — the entity cannot read them, reason from them, or disagree
+        # with them. It held 270,056 meanings and nothing telling it how
+        # a sentence works, so it took the first word it recognised and
+        # defined it: "why does an arch stand up" answered with the
+        # definition of WHY.
+        #
+        # Loaded here, at boot, before anything is asked. A curriculum
+        # someone has to remember to load is not part of what the thing
+        # is.
+        try:
+            import curriculum_loader as _cl
+            for _f, _subj in (("curriculum_grammar.md", "grammar"),
+                              ("curriculum_usage.md", "usage")):
+                _p = Path(files_dir) / _f
+                if _p.exists():
+                    _cl.load(_store, name, _p.read_text(encoding="utf-8"),
+                             subject=_subj, chassis=_body, source="genome")
+        except Exception:
+            pass
+
         import resident as _resident
         global _resident_state
         _resident_state = _resident.Resident(_body)
