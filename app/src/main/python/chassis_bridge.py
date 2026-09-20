@@ -25,6 +25,7 @@ from pathlib import Path
 _body = None
 _store = None
 _root = None
+_resident_state = None
 
 
 def start(files_dir: str, name: str = "seth_el") -> str:
@@ -85,10 +86,33 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         import base_bible
         seeded = base_bible.seed(_body)
 
+        # HOLD EVERYTHING, ON WHATEVER THIS DEVICE HAS.
+        #
+        # boot.py called resident.hold(); this bridge never did, so on
+        # the phone the lexicon, grammar and the eight processors were
+        # each reachable and none of them were forced resident. The
+        # Architect's design is that they are held SIMULTANEOUSLY, and
+        # the device is where that happens to sit, not whether it does.
+        import resident as _resident
+        global _resident_state
+        _resident_state = _resident.Resident(_body)
+        held = _resident_state.hold()
+
         return json.dumps({
             "ok": True,
             "entity": name,
             "audit": audit,
+            "held": {
+                "simultaneous": held["simultaneous"],
+                "load_ms": held["load_ms"],
+                "device": held["device"]["kind"],
+                "device_name": held["device"].get("name"),
+                "api": held["device"].get("api"),
+                "ids": held["lexicon"]["ids"],
+                "with_senses": held["lexicon"]["with_senses"],
+                "grammar": held["grammar"],
+                "curriculum": held["curriculum"]["count"],
+            },
             "kind_lines": len(seeded["written"]),
             "room": len(getattr(_body, "permanence", None).model)
                     if getattr(_body, "permanence", None) else 0,
