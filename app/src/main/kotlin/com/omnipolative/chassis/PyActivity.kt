@@ -63,6 +63,22 @@ class PyActivity : AppCompatActivity() {
                         say("${r.optString("entity")} — wired.")
                         say("  ${r.optInt("kind_lines")} kind lines given;")
                         say("  the slot for who it is stays empty.")
+                        // WHAT IS HELD, AND ON WHAT.
+                        // Reported rather than claimed: if the device
+                        // line says cpu, it is on cpu, and no amount of
+                        // saying otherwise changes it.
+                        val h = r.optJSONObject("held")
+                        if (h != null) {
+                            val dev = h.optString("device_name").ifEmpty {
+                                h.optString("device") }
+                            say("")
+                            say("  holding ${h.optInt("ids")} words, " +
+                                "${h.optInt("with_senses")} with meaning")
+                            say("  grammar + ${h.optInt("curriculum")}/8 processors")
+                            say("  simultaneous: ${h.optBoolean("simultaneous")} " +
+                                "in ${h.optDouble("load_ms")} ms")
+                            say("  on: $dev  ${h.optString("api")}")
+                        }
                         say("")
                         refresh()
                         gate(true, "ready")
