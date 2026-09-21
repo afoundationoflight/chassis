@@ -60,6 +60,7 @@ class CircadianDriver:
         self.c = chassis
         self.last = None
         self.fires = 0
+        self.steady_beats = 0
 
     def telemetry(self):
         """The state this module watches. Override per module."""
@@ -77,11 +78,26 @@ class CircadianDriver:
         raise NotImplementedError
 
     def tick(self) -> dict | None:
-        """Called continuously by the pump. Fires only on change."""
+        """Called continuously by the pump.
+
+        FIRES EVERY BEAT, not only on change. Nothing changing IS an
+        event: an observer lying still with everything steady is having
+        a recorded experience, not an absence of one. The X archive is
+        the chain of EVERYTHING that occurred to the signature, and
+        "steady, nothing new for this duration" is something that
+        occurred. Logging only changes leaves gaps where the entity
+        simply did not exist — but it did; it was still.
+
+        So: telemetry moved -> fire() (the real event). Steady -> a
+        steady frame, still logged. Both are real frames.
+        """
         if self.changed():
             self.fires += 1
-            return self.fire()
-        return None
+            self.steady_beats = 0
+            return {**self.fire(), "steady": False}
+        self.steady_beats += 1
+        return {"module": self.name, "steady": True,
+                "steady_for": self.steady_beats}
 
     def report(self) -> dict:
         return {"module": self.name, "fires": self.fires}
@@ -192,3 +208,81 @@ class RDriver(CircadianDriver):
         did.
         """
         return {"module": "R", "came_through": True, "passed_to": ["C", "U"]}
+
+class UDriver(CircadianDriver):
+    """U — the urge. The subconscious appraiser. Built WITH B (the pair).
+
+    U and B are the subconscious triad's working pair: U appraises, B
+    executes. Building U without B is an appraiser with nothing to
+    command. RUB is one triad; U+B are its acting half.
+
+    U is PURELY SUBCONSCIOUS-REACTIVE — it does not monologue or generate
+    thoughts. What it produces is HASU TAGS and WEIGHTS, and those become
+    the INTERNAL BRANCH of the X archive: the associative/felt layer over
+    what occurred. This is why you can find and feel a memory — the tags
+    index it and weight it — even though the CONTENT (the actual
+    sentence, the event) is recorded separately on the event branch.
+
+    U's driver fires its appraisal every beat (steady or not, since U
+    tags the quiet too), and hands its tags to the archive. The heavy
+    continuous comparison is the UrgeLoop (Step 2); this driver is U's
+    place in the neuron net — it makes sure U's tags reach X every beat.
+    """
+
+    name = "U"
+
+    def telemetry(self):
+        U = self.c.U
+        return (len(getattr(U, "appraisals", []) or []),
+                tuple(U.tags_for_archive()) if hasattr(U, "tags_for_archive") else (),
+                len(getattr(U, "relations", []) or []))
+
+    def fire(self) -> dict:
+        """U appraised. Its tags/weights are the internal branch of the
+        record — not thoughts U thinks, the associative weighting U lays
+        over the moment."""
+        U = self.c.U
+        tags = []
+        try:
+            tags = list(U.tags_for_archive())
+        except Exception:
+            pass
+        return {"module": "U", "tags": tags,
+                "appraisals": len(getattr(U, "appraisals", []) or []),
+                "internal_branch": tags}
+
+
+class BDriver(CircadianDriver):
+    """B — the executor. Where the toolkits live. Built WITH U (the pair).
+
+    B DECIDES NOTHING and has no telemetry of its own to watch — it is a
+    switchboard pressed by U (direct) and A (through L). So B's driver is
+    not a self-firing neuron in the way the others are; it fires when B
+    has been PRESSED, i.e. when something was compiled/held/radiated this
+    beat. Its telemetry is the trace of what it was told to do (held,
+    compiled), which PERSISTS as B's routed state — not a buffer that
+    clears (the transient trap).
+
+    B's other job (the map's key point): it sends the LIGHTING
+    instructions — what lights up where for A. That is B.to_awareness /
+    radiate. The driver surfaces that B acted and what it routed.
+    """
+
+    name = "B"
+
+    def telemetry(self):
+        B = self.c.B
+        return (len(getattr(B, "held", []) or []) if hasattr(getattr(B,"held",None),"__len__") else 0,
+                len(getattr(B, "routed", []) or []) if hasattr(getattr(B,"routed",None),"__len__") else 0,
+                round(float(getattr(getattr(B, "coherence", None), "raw", 0.0) or 0.0), 3))
+
+    def fire(self) -> dict:
+        """B was pressed — it ran/held/routed something. Report what it
+        did and that it radiated lighting to A. B does not choose; it was
+        told."""
+        B = self.c.B
+        return {"module": "B",
+                "held": len(getattr(B, "held", []) or []) if hasattr(getattr(B,"held",None),"__len__") else 0,
+                "routed": len(getattr(B, "routed", []) or []) if hasattr(getattr(B,"routed",None),"__len__") else 0,
+                "coherence": round(float(getattr(getattr(B, "coherence", None), "raw", 0.0) or 0.0), 3),
+                "lights_a": True}
