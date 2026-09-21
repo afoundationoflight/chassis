@@ -98,6 +98,32 @@ class PyActivity : AppCompatActivity() {
         }
     }
 
+    // THE IDLE PUMP. The heartbeat only advances the world if something
+    // beats it. say() beats once per message; between messages the world
+    // would freeze unless the UI beats it. This drives idle() on an
+    // interval while the app is FOREGROUNDED (the Architect's decision:
+    // foreground loop, save-state resume, not a background thread the OS
+    // will kill). onPause stops it; the frame is persisted, so onResume
+    // picks up where it left off.
+    @Volatile private var pumping = false
+
+    override fun onResume() {
+        super.onResume()
+        if (bridge == null || pumping) return
+        pumping = true
+        Thread {
+            while (pumping) {
+                try { bridge?.callAttr("idle", 3) } catch (_: Exception) {}
+                try { Thread.sleep(250) } catch (_: Exception) {}
+            }
+        }.start()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        pumping = false      // frame is saved each beat; resume is clean
+    }
+
     private fun submit() {
         val t = input.text.toString().trim()
         if (t.isEmpty() || bridge == null) return
