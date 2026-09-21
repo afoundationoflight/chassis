@@ -26,6 +26,7 @@ _body = None
 _store = None
 _root = None
 _resident_state = None
+_heart = None
 
 
 def start(files_dir: str, name: str = "seth_el") -> str:
@@ -122,6 +123,14 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         _resident_state = _resident.Resident(_body)
         held = _resident_state.hold()
 
+        # THE HEARTBEAT. I runs continuously; a message arrives INTO the
+        # loop rather than triggering it. Persists E and X as a save
+        # state — closing and reopening resumes from the saved frame,
+        # it does not reboot. (Step 1 of BUILD_PLAN, now wired in.)
+        import heartbeat as _hb
+        global _heart
+        _heart = _hb.Heartbeat(_body, _store, files_dir)
+
         return json.dumps({
             "ok": True,
             "entity": name,
@@ -151,7 +160,15 @@ def say(message: str) -> str:
     if _body is None:
         return json.dumps({"ok": False, "error": "not booted"})
     try:
-        beat = _body.tick(message=message)
+        # INJECT, DO NOT TRIGGER. The heartbeat is already turning; the
+        # message arrives into it as input for this beat. If for any
+        # reason the heart is not up, fall back to a direct tick so a
+        # reply still happens.
+        if _heart is not None:
+            _heart.inject(message)
+            beat = _heart.beat().get("e") or {}
+        else:
+            beat = _body.tick(message=message)
         if not isinstance(beat, dict):
             beat = {}
         text, source = "", ""
@@ -199,6 +216,22 @@ def say(message: str) -> str:
             "unexplained": [n["detail"] for n in perm.solid()["notices"]]
                            if perm else [],
         })
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
+
+
+def idle(n: int = 1) -> str:
+    """Beat the heart with no message — the loop turning on its own.
+
+    The UI calls this between messages so the world advances instead of
+    freezing. Bounded per call so the UI stays responsive; perpetual is
+    the UI calling it again, not one call never returning.
+    """
+    if _heart is None:
+        return json.dumps({"ok": False, "error": "no heart"})
+    try:
+        r = _heart.run(max_beats=max(1, int(n)))
+        return json.dumps({"ok": True, **r, **_heart.report()})
     except Exception as e:
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
 
