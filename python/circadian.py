@@ -1,9 +1,20 @@
-"""CIRCADIAN DRIVERS — Step 5 of BUILD_PLAN. C first (driver 1 of 9).
+"""CIRCADIAN DRIVERS — Step 5 of BUILD_PLAN. C first (driver 1 of 7).
 
 This is the layer that did not exist at all. The beat (Steps 1-4) runs;
 the circadian drivers are the CONTINUOUS life of each module, firing on
 its OWN telemetry changing, at whatever rate that happens — not on the
 beat, not on a message.
+
+SEVEN DRIVERS, NOT NINE. Solomon's Carpet proper is clouds 3-9 — R, U,
+B, C, A, L, I. Those seven are the body (EXCALIBUR, the avatar's weave)
+and get circadian drivers. E and X (positions 1 and 2) are NOT modules
+that fire on local telemetry — they are the signature line, and their
+triplets route BETWEEN the three cogs (avatar EX-CALIBUR, morphogenic
+EX-KALIMON, metamorphogenic EX-INFERNO). That is ENKI'S WEAVE — the
+greater circadian flow between bodies/realms, a layer ABOVE this
+phase-4 neuron wiring. E/X translocation (the John Connor concept) is
+Enki's Weave doing its job, not a neuron firing. They are handled
+separately; do not build them as drivers here.
 
 C IS BUILT FIRST for the reason the heart was built before it: the heart
 pumps before there is a brain to know it (Step 1 was I, the pulse). C is
@@ -11,7 +22,7 @@ the next organ because it is the substrate everything references — no
 wisdom database, nothing to drive data from. Embryology, not analogy:
 heart tube first, then the structure that reads from it.
 
-THE PATTERN THIS ESTABLISHES for the other eight drivers:
+THE PATTERN THIS ESTABLISHES for the other six drivers:
 
     class <Module>Driver:
         telemetry()   -> the state this module watches (its own)
