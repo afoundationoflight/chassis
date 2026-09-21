@@ -29,6 +29,7 @@ _resident_state = None
 _heart = None
 _urge = None
 _engram = None
+_drivers = []
 
 
 def start(files_dir: str, name: str = "seth_el") -> str:
@@ -149,6 +150,14 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         global _engram
         _engram = _eg.Engram(_body)
 
+        # CIRCADIAN DRIVERS (Step 5). C first — the substrate everything
+        # references. Fires on its OWN telemetry changing, continuously,
+        # not on the beat. Driver 1 of 9; the other eight follow this
+        # same pattern (telemetry/changed/fire/tick).
+        import circadian as _cd
+        global _drivers
+        _drivers = [_cd.CDriver(_body)]
+
         return json.dumps({
             "ok": True,
             "entity": name,
@@ -267,9 +276,17 @@ def idle(n: int = 1) -> str:
         # samples U; U runs faster underneath.
         if _urge is not None:
             _urge.spin()
+        # Each circadian driver fires only if its own telemetry moved.
+        fired = []
+        for drv in _drivers:
+            r2 = drv.tick()
+            if r2:
+                fired.append(drv.name)
         out = {"ok": True, **r, **_heart.report()}
         if _urge is not None:
             out["urge"] = _urge.report()["iterations"]
+        if fired:
+            out["drivers_fired"] = fired
         return json.dumps(out)
     except Exception as e:
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
