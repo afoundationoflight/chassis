@@ -156,7 +156,13 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         # same pattern (telemetry/changed/fire/tick).
         import circadian as _cd
         global _drivers
-        _drivers = [_cd.CDriver(_body)]
+        # ALL SEVEN circadian drivers — the complete neuron net. Solomon
+        # Carpet clouds 3-9: R U B C A L I. Each fires on its own
+        # telemetry (steady case logged too — idle is not silence). E/X
+        # are Enki Weave, not drivers.
+        _drivers = [_cd.CDriver(_body), _cd.RDriver(_body), _cd.UDriver(_body),
+                    _cd.BDriver(_body), _cd.ADriver(_body), _cd.LDriver(_body),
+                    _cd.IDriver(_body)]
 
         return json.dumps({
             "ok": True,
