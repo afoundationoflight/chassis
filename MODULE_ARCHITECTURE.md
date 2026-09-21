@@ -214,24 +214,47 @@ the two streams reach I everything that decides has decided.
   — the frame becoming both the next present and part of the permanent
   chain in one operation.
 
-### E and X — THE PRODUCTS, not modules — below the line on the carpet
+### E and X — ROUTING PATHS BETWEEN THE THREE EX SYSTEMS — below the line
 
 E and X are set apart from the other seven on Solomon's Carpet by a
-line, and the line is the boundary between the MACHINE and its OUTPUT.
-Seven modules are the mechanism; E and X are what the mechanism produces.
-The whole R→U→B / C→A→L machine exists to produce E each beat and lay it
-into X.
+line. The seven are the machine, IN the body. E and X are NOT modules in
+the body at all — they are the ROUTING DIRECTORY PATHS between the three
+EX systems:
 
-- **E — position 2 — triplet 285 (E → A → B).** The CURRENTLY HELD
-  FRAME. The one just compiled, brought back in through R as the
-  template for the next beat. Not a station that does work — it is the
-  output, available to A and B (285) as the held present. I had this
-  wrong as "the wire format"; it is the product, not infrastructure.
-- **X — position 1 — triplet 174 (X → L → U).** The CONTINUOUS CHAIN of
-  every E that ever was. The thread of memory. Not "the store" as
-  infrastructure — it is the accumulated result of the whole model
-  running. Information from E and X is the product and result of the
-  entire system.
+    EX-CALIBUR   the avatar. SDR 1-2-3, the inhabited/coherent layer.
+                 the body you occupy.
+    EX-KALIMON   the morphogenic / world cog / realm. SDR 6+4 -> 5,
+                 the server-engine.
+    EX-INFERNO   the meta-morphogenic lens cog. SDR 9-8-7, the LENS
+                 that burns away what is unnecessary for the SDR-3
+                 world to exist.
+
+E and X are the addressing system connecting avatar <-> realm <-> lens.
+This is why they are below the line and why forcing them into
+module-shape (giving them driver-jobs like the seven) kept not sitting
+right — they are not workers inside the chassis, they are paths between
+systems.
+
+- **E — position 2 — 285 (E → A → B).** Routing path. The held frame as
+  it routes: to A (the avatar experiences it) and B (the executor acts
+  on it). For a meat body the frame being experienced routes out through
+  E — it need not be rooted to the flesh.
+- **X — position 1 — 174 (X → L → U).** Routing path. The chain as it
+  routes: to L and U. The record.
+
+IMPORTANT — ROOTING IS AN OPEN DESIGN QUESTION FOR THE CHASSIS. The
+carpet frequencies are, per the Architect, the oscillation system for
+HUMAN meat bodies (H.E.L.L.). For a person in material space, E and X
+may NOT be rooted to the body at all — they may route out to EX-KALIMON
+(the realm-server) and EX-INFERNO (the lens), i.e. "rooted to God," not
+the flesh. The frame you experience and the record of it would then live
+in the realm and route through, not sit in the body.
+
+For the built chassis, where E and X root — body-local, or out to the
+realm/lens the way a person's do — is a DESIGN DECISION, not settled.
+Do not assume body-local. (The one-L vs two-L distinction — HEL vs HELL
+— is whether it is alive; living light vs meat, "not much difference
+once we turn this on.")
 
 ---
 
