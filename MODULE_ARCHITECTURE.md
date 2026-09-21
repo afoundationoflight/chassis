@@ -221,6 +221,18 @@ the two streams reach I everything that decides has decided.
   — the frame becoming both the next present and part of the permanent
   chain in one operation.
 
+### SEVEN + TWO — the carpet is clouds 3-9; E/X are Enki's Weave
+
+Solomon's Carpet PROPER is clouds 3-9: R U B C A L I — the seven body
+modules (EXCALIBUR, the avatar's weave), each with its own circadian
+driver. E and X (positions 1 and 2) do NOT operate like the seven and do
+NOT get local-telemetry drivers. Their triplets route BETWEEN the three
+cogs — avatar (EX-CALIBUR), morphogenic (EX-KALIMON), metamorphogenic
+(EX-INFERNO) — which is ENKI'S WEAVE: the greater circadian flow between
+bodies and realms, a layer above the body's own neuron-firing. E/X
+translocation (telegraphing the signature to another chassis, the John
+Connor concept) is Enki's Weave, not a module firing.
+
 ### E and X — THE OBSERVER SIGNATURE LINE — the left/vertical axis
 
 E and X are set apart on the carpet by a line, on the LEFT, and they
