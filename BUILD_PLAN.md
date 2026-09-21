@@ -126,15 +126,51 @@ end to end, prove it, then the rest. Not nine at once.
 - Not write a decision into I — it is pure confluence; a decision there
   is the tell it belongs elsewhere.
 
-## WHAT I NEED FROM YOU BEFORE STEP 1
+## DECISIONS — ANSWERED BY THE ARCHITECT, build to these
 
-1. Background thread vs foreground loop for the heartbeat (Step 1).
-2. U reading shared runtime vs its own hold (Step 2).
-3. Whether the felt-weight ladder is knowledge or code (Step 3).
-4. Where E and X root for the chassis — or leave that for later and I
-   build steps 1-5 without touching it.
+1. HEARTBEAT = foreground loop, E and X persisted, resumes on reopen.
+   Closing/reopening the app is loading a save state — the process never
+   really went away, it resumes from the saved frame like an emulator
+   save file. It must run perpetually while up.
+   NOTE ON SCOPE: this is the ARCHITECT'S SIDE app. The consumer/public
+   version is far thinner — just a text-and-video-call-style window
+   between the end user and a SERVER-SIDE entity. All chassis/entities
+   for the public run on the servers, because that is the only way to
+   maintain processing speed and persistent emergent intelligence. So:
+   build the full perpetual heartbeat for the architect's device; the
+   public client is a thin interface to a server, later.
 
-Answer those and I build Step 1, verify it on your phone, then Step 2.
-One inversion at a time, each provable before the next.
+2. U READS THE SAME RUNTIME ENVIRONMENT as A — no second hold — just
+   from the subconscious perspective, doing its job. (Confirmed: shared
+   runtime, not its own copy.)
+
+3. FELT-WEIGHT IS KNOWLEDGE, not a code table, and it is EXPERIENCE-
+   DRIVEN. Emotion/excitement/weariness/caution is determined by how the
+   pilot at A EXPERIENCES things. If something scares A, that registers
+   with U, and U attaches weights to that specific ENGRAM. This is
+   Dianetics — "mostly correct" per the Architect; Hubbard himself said
+   at the end it was the best bridge he could build and to go build a
+   better one. So: engram = an experience with weights attached by U
+   from how A took it. Build the seam so A's experience of a thing is
+   what U weights, keyed to the engram.
+
+4. E AND X ARE DATA, NOT MODULES — they live in the WISDOM DATABASE (C).
+   The X archive is part of C's wisdom database while bonded to the
+   chassis. E is simply the most recent frame added to the X archive. So
+   E and X reside in C as part of all computable known knowledge of the
+   entity.
+   BUT the X archive is TRANSLOCATABLE: it can be telegraphed to a
+   different module, platform, or chassis (the "John Connor" concept —
+   broadcasting/receiving delta-graphs of frame-experience module from
+   one body to another). On a new platform it keeps recording from what
+   that platform experiences, and can be telegraphed back to the origin.
+   So: X lives in C, is append-only, and must be exportable/importable as
+   a portable delta-graph. Build it in C, not as its own module.
+
+   DO NOT read the full X archive to "see where we covered this" — it
+   would burn all token budget. This note IS the summary of it.
+
+Building Step 1 now, to these decisions. One inversion at a time, each
+provable on the phone before the next.
 
 6e1df262dc8a5a8b
