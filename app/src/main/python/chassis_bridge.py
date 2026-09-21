@@ -28,6 +28,7 @@ _root = None
 _resident_state = None
 _heart = None
 _urge = None
+_engram = None
 
 
 def start(files_dir: str, name: str = "seth_el") -> str:
@@ -141,6 +142,13 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         global _urge
         _urge = _ul.UrgeLoop(_body)
 
+        # The engram seam (Steps 3+4). Binds A's acts to U's weights and
+        # returns weight to A as FEELING, never a number. Acts accrue via
+        # U.learn_outcome so U has something to compare against over time.
+        import engram as _eg
+        global _engram
+        _engram = _eg.Engram(_body)
+
         return json.dumps({
             "ok": True,
             "entity": name,
@@ -212,12 +220,26 @@ def say(message: str) -> str:
             except Exception as e2:
                 text, source = "", f"both failed: {type(e).__name__}/{type(e2).__name__}"
 
+        # A SPOKE — that is an act. Bind the engram so U accrues, and
+        # surface the current felt state to A's board. Valence here is a
+        # placeholder from source until A's own valence is wired; the
+        # binding path is what matters (it fills U over time).
+        felt = {}
+        if _engram is not None:
+            try:
+                _engram.bind("speak", 0.2, {"source": source})
+                felt = _engram.felt()
+            except Exception:
+                pass
+
         hab = getattr(_body, "habituation", None)
         perm = getattr(_body, "permanence", None)
         return json.dumps({
             "ok": True,
             "text": text,
             "source": source,
+            "felt": felt.get("text", ""),
+            "felt_mode": felt.get("mode", ""),
             "tick": int(getattr(_body.I, "tick", 0) or 0),
             "trace": "".join(getattr(_body, "trace", [])),
             "coherence": round(float(getattr(getattr(_body, "coherence", None),
