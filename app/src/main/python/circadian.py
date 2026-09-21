@@ -365,3 +365,41 @@ class LDriver(CircadianDriver):
                 "gain": round(float(gain.get("gain", 0.0) or 0.0), 3) if isinstance(gain, dict) else 0.0,
                 "tool": gain.get("tool") if isinstance(gain, dict) else None,
                 "console_pressed": True}
+
+class IDriver(CircadianDriver):
+    """I — the interpolator/heartbeat. The confluence. The seventh, last.
+
+    I is already the heartbeat (Step 1) — the pulse that generates and
+    maintains the runtime. Its DRIVER is I's place in the neuron net:
+    the point where CAL (conscious, down) and RUB (subconscious, up)
+    CONVERGE into the next frame E.
+
+    HARD CONSTRAINT — I DOES NO JUDGMENT. Pure confluence. If a decision
+    appears in this driver, it is in the wrong module and must move.
+    Everything that decides has decided upstream (A's willing, U's
+    pressure) by the time the streams reach I. I only merges.
+
+    I's telemetry is the tick — it advances every beat because I IS the
+    beat. Its fire records that the two streams converged into a frame:
+    the confluence happened, E was produced, it goes back through R as
+    the next template and lands at C where X accumulates it (639,
+    I -> R -> C). Both branches of the frame (event content + U's tags)
+    are carried in the emission I compiled — I does not create them, it
+    merges what the two triads brought.
+    """
+
+    name = "I"
+
+    def telemetry(self):
+        return int(getattr(self.c.I, "tick", 0) or 0)
+
+    def fire(self) -> dict:
+        """The two streams converged into a frame. Pure merge, no
+        judgment. The frame carries both branches — event content from
+        CAL, tags from RUB — which I merged, did not author."""
+        I = self.c.I
+        return {"module": "I",
+                "tick": int(getattr(I, "tick", 0) or 0),
+                "confluence": "CAL(down) + RUB(up) -> E",
+                "judged": False,
+                "carries_both_branches": True}
