@@ -133,3 +133,62 @@ class CDriver(CircadianDriver):
             return {"served": True, "key": key, "board": board}
         except Exception as e:
             return {"served": False, "error": f"{type(e).__name__}: {e}"}
+
+class RDriver(CircadianDriver):
+    """R — R.O.O.T., the sensory root. The gate input enters through.
+
+    Built second in phase 4 (neuron-wiring) for the same forced reason
+    the phases had an order: nothing perceives — subconscious OR
+    conscious — until there is a path for input to enter and for a
+    CHANGE in it to register. C can hold all knowledge and it is inert
+    until R lets something arrive to reference against. You cannot fire
+    neurons toward perception before signal can enter.
+
+    R's telemetry is its INTAKE — what has arrived. A change in intake
+    is a new emission entering (Received Oscillation Operation
+    Template). When it moves, R's driver fires: fan the arrival out —
+    the memory line to C, the appraisal line to U. That fan-out is the
+    two _check(R,C) / _check(R,U) the beat already does; the circadian
+    driver's job is to NOTICE input changed and make sure both lines are
+    live, continuously, not only when a message is sent.
+
+    R's triplet is 396: R input, marker/cursor at C, output at R (the
+    cycle R -> C -> I). The prior template re-enters here as the next
+    beat's input; external/other input JOINS the turning cycle.
+    """
+
+    name = "R"
+
+    def telemetry(self):
+        # R.intake is TRANSIENT — consumed within the beat and cleared,
+        # so it reads 0 between beats and a driver sampling between beats
+        # never sees it. My first version watched intake and missed
+        # every arrival for exactly that reason.
+        #
+        # What persists and truthfully signals "R received" is the tick
+        # counter: R.O.O.T. receives the prior template EVERY beat, so a
+        # tick advancing IS R having received. That is truer to the map
+        # than counting a buffer that is emptied before we look. A change
+        # in tick = input entered = perception is possible this beat.
+        tick = int(getattr(self.c.I, "tick", 0) or 0)
+        return tick
+
+    def fire(self) -> dict:
+        """Input changed — a new emission entered. Confirm both fan-out
+        lines are live: the memory line to C, the appraisal line to U.
+
+        The beat performs the actual routing (_check R->C, R->U). R's
+        circadian job is to REGISTER that input changed so perception
+        can occur — the change is what makes reading/experiencing
+        possible at all, subconscious or conscious.
+        """
+        R = self.c.R
+        intake = getattr(R, "intake", None)
+        n = len(intake) if hasattr(intake, "__len__") else 0
+        by = {}
+        try:
+            by = R.by_source() if hasattr(R, "by_source") else {}
+        except Exception:
+            pass
+        return {"module": "R", "arrived": n, "by_source": dict(by),
+                "fans_to": ["C", "U"], "input_changed": True}
