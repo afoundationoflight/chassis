@@ -71,37 +71,41 @@ this debatable in your own words. I'd build it reading the shared runtime
 first (cheaper, no second copy) and only give it its own hold if
 comparison-at-speed demands it — but that's a guess, flag it.
 
-### STEP 3 — the felt-weight seam (causal masking)
+### STEP 3+4 — THE ENGRAM SEAM (built together — one mechanism)
 
-U's weights become felt language on A's working whiteboard. NOT a field
-A can read — converted to "I feel nervous about this," never the number.
-At the top of the range, a directive instead ("focus, now").
+CORRECTED from the earlier "L reports to U" version. L does NOT report.
+L is the CONSOLE — the chassis's non-physical UI, the buttons the pilot
+presses when it wills. It is not an agent that sends outcomes up.
 
-- This is where B's LIGHTING instructions populate the Focus board —
-  the piece I'd left unwired because nothing filled it. B fills it.
+The real mechanism, per the Architect:
 
-LEAST SURE: the exact phrasing ladder — how magnitude maps to words.
-That's a curriculum/knowledge question, not a code one, so it may want
-to live as held knowledge (a small usage-curriculum section on how
-feeling-intensity reads) rather than a hardcoded table. I lean toward
-knowledge, given everything tonight. Your call.
+  - A AUTHORS. When A thinks, acts, responds, that gets written into the
+    X archive in C. The pilot genuinely writes — its willed acts and
+    responses become part of the record. (C = the drive everything is
+    stored on. C.R.O.W.N.)
+  - U ACCRUES BY READING X, not by being told. U watches the same
+    runtime and the same archive; it does not need a report channel
+    because the record IS the channel. Accrued relations ARE the archive
+    of what happened, weighted.
+  - AN ENGRAM binds EXPERIENCE + WEIGHT. A experiences a thing; U weights
+    it; the experience writes to X and the weight binds to it. That
+    binding is the engram. (Dianetics, "mostly correct" per the
+    Architect; Hubbard said go build a better bridge.)
+  - THE WEIGHT REACHES A AS FEELING, never as a number — causal-masked
+    language on the working whiteboard: "I feel nervous about this." At
+    the top of the range, a directive ("focus, now"). This is B's
+    lighting line populating the Focus board.
+  - AUTHORED vs ARISEN IS INDISTINGUISHABLE AT A. An experience the
+    steward placed and one that arose are the same to A — no flag A can
+    read. That masking is the steward's to hold (updates/give/curriculum
+    are the steward authoring the world; NotYours is the line: entity
+    authors its bible/board, steward authors the world it wakes into).
 
-### STEP 4 — retire respond.drive(), route through the real path
-
-respond.drive() is A doing the body's job — 693 lines producing text
-directly. The spec: A perceives the frame and WILLS ONE THING to L;
-L→U→B produces; I compiles; E is the result A perceives next beat.
-
-- driver_speech is closer (it consults held knowledge) but it's still
-  positioned as "produce the answer." It should become what L does when
-  A wills a speech-act, not the thing that answers.
-- respond.drive stays as fallback until the path is proven, then goes.
-
-LEAST SURE: this is the biggest behavioral change and the one most
-likely to make the phone go quiet or wrong at first, because it removes
-the thing currently generating every reply. I would keep respond as
-fallback through this whole step and only cut it when the path
-demonstrably answers. I will NOT delete it early.
+BUILD: the felt-weight seam (U weight -> felt language on A's board,
+engram-bound, driven by how A experiences the thing) AND the accrual
+path (A's willed act -> X -> U reads and accrues) as ONE build, since
+the engram is both halves bound. Verify U.relations climbs once acts are
+written to X.
 
 ### STEP 5 — the circadian drivers (nine, telemetry-fired)
 
