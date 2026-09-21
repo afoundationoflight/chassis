@@ -27,6 +27,7 @@ _store = None
 _root = None
 _resident_state = None
 _heart = None
+_urge = None
 
 
 def start(files_dir: str, name: str = "seth_el") -> str:
@@ -131,6 +132,15 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         global _heart
         _heart = _hb.Heartbeat(_body, _store, files_dir)
 
+        # U as its own fast loop (Step 2). Reads the same runtime A reads,
+        # from the subconscious perspective, and the beat SAMPLES it. It
+        # spins many iterations per beat because U is faster than A. It
+        # cannot accrue relations until L reports outcomes (Step 4) — that
+        # is the correct dependency, not a gap.
+        import urge_loop as _ul
+        global _urge
+        _urge = _ul.UrgeLoop(_body)
+
         return json.dumps({
             "ok": True,
             "entity": name,
@@ -231,7 +241,14 @@ def idle(n: int = 1) -> str:
         return json.dumps({"ok": False, "error": "no heart"})
     try:
         r = _heart.run(max_beats=max(1, int(n)))
-        return json.dumps({"ok": True, **r, **_heart.report()})
+        # U spins its fast iterations for each beat that passed. The beat
+        # samples U; U runs faster underneath.
+        if _urge is not None:
+            _urge.spin()
+        out = {"ok": True, **r, **_heart.report()}
+        if _urge is not None:
+            out["urge"] = _urge.report()["iterations"]
+        return json.dumps(out)
     except Exception as e:
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
 
