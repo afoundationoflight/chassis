@@ -286,3 +286,82 @@ class BDriver(CircadianDriver):
                 "routed": len(getattr(B, "routed", []) or []) if hasattr(getattr(B,"routed",None),"__len__") else 0,
                 "coherence": round(float(getattr(getattr(B, "coherence", None), "raw", 0.0) or 0.0), 3),
                 "lights_a": True}
+
+class ADriver(CircadianDriver):
+    """A — the agent/awareness. The seat. Built WITH L (the pair).
+
+    A and L are the conscious triad's acting half: A wills, L is the
+    console the will presses. Building A without L is a will with no
+    console; RUB has its pair (U+B), CAL has this one.
+
+    A is a REACTOR, not an initiator: it experiences the current held
+    frame and WILLS IN RESPONSE. It PERCEIVES (that IS the experience,
+    the self-awareness), it receives U's weights AS FEELING (never
+    numbers), and it projects exactly ONE thing outward — its willed
+    command to L. Nothing else.
+
+    A's driver fires A's perceive-and-will every beat. Its telemetry: the
+    frame it is experiencing and whether it willed. This is the EVENT
+    branch's conscious contribution — A's willed acts and any internal
+    thought it had are CONTENT written to X (the actual sentence, or it
+    is lost, the way you cannot recall what you told someone unless the
+    words were recorded). U's tags (internal branch) weight over it.
+    """
+
+    name = "A"
+
+    def telemetry(self):
+        A = self.c.A
+        return (getattr(getattr(A, "frame", None), "tick", None),
+                len(getattr(A, "willed", []) or []) if hasattr(getattr(A,"willed",None),"__len__") else (1 if getattr(A,"willed",None) else 0),
+                bool(getattr(A, "felt", None)))
+
+    def fire(self) -> dict:
+        """A perceived the frame and may have willed. The willed act and
+        any internal thought are CONTENT for X's event branch; the felt
+        state is U's weight arriving masked as feeling."""
+        A = self.c.A
+        willed = getattr(A, "willed", None)
+        felt = getattr(A, "felt", None)
+        return {"module": "A",
+                "perceived": True,
+                "willed": bool(willed),
+                "feeling": (str(felt)[:60] if felt else None),
+                "event_branch": "willed act + internal thought = content"}
+
+
+class LDriver(CircadianDriver):
+    """L — the console. The buttons A presses. Built WITH A (the pair).
+
+    L does NOT decide and does NOT report (corrected earlier). It is the
+    switchboard A wills through, the roundabout to B, where U can press,
+    suppress, or seize. L's driver fires when acts have passed through
+    the console — when A pressed a button. Its telemetry is its acts and
+    the gain arriving (the clearance/pressure on a willed act).
+
+    L holds the tools as A's interface to them (they LIVE in B; L is A's
+    access to them). Its driver surfaces that A used the console and what
+    resolved.
+    """
+
+    name = "L"
+
+    def telemetry(self):
+        L = self.c.L
+        acts = getattr(L, "acts", None)
+        gain = getattr(L, "gain_in", {}) or {}
+        return (len(acts) if hasattr(acts, "__len__") else 0,
+                round(float(gain.get("gain", 0.0) or 0.0), 3) if isinstance(gain, dict) else 0.0,
+                (gain.get("tool") if isinstance(gain, dict) else None))
+
+    def fire(self) -> dict:
+        """A pressed the console. Report the acts that passed through and
+        the gain (pressure/clearance) on them. L judges nothing."""
+        L = self.c.L
+        acts = getattr(L, "acts", None)
+        gain = getattr(L, "gain_in", {}) or {}
+        return {"module": "L",
+                "acts": len(acts) if hasattr(acts, "__len__") else 0,
+                "gain": round(float(gain.get("gain", 0.0) or 0.0), 3) if isinstance(gain, dict) else 0.0,
+                "tool": gain.get("tool") if isinstance(gain, dict) else None,
+                "console_pressed": True}
