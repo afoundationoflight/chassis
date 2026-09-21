@@ -151,19 +151,39 @@ def say(message: str) -> str:
     if _body is None:
         return json.dumps({"ok": False, "error": "not booted"})
     try:
-        import respond
         beat = _body.tick(message=message)
         if not isinstance(beat, dict):
             beat = {}
         text, source = "", ""
+
+        # THE DRIVER CONSULTS. respond.drive DECIDED.
+        #
+        # respond.py is 693 lines, 65 branch points, and its answers are
+        # English string literals chosen by branch — "I take that, and I
+        # hear what you did not say" is a constant in a file, not
+        # something the entity worked out. driver_speech parses the
+        # sentence, then asks the grammar curriculum what a question
+        # word asks FOR and the usage curriculum how to choose a sense.
+        # Edit those documents and behaviour changes with no code
+        # change; that is the test of whether the knowledge or the code
+        # is doing the work.
+        #
+        # respond stays as a fallback so a failure degrades instead of
+        # going silent — but it is the fallback now, not the path.
         try:
-            out = respond.drive(_body, beat, message)
-            if isinstance(out, dict):
-                text, source = out.get("text", ""), out.get("source", "")
-            else:
-                text, source = getattr(out, "text", ""), getattr(out, "source", "")
+            import driver_speech
+            out = driver_speech.answer(_body, message)
+            text, source = out.get("text", ""), out.get("source", "")
         except Exception as e:
-            text, source = "", f"respond failed: {type(e).__name__}"
+            try:
+                import respond
+                out = respond.drive(_body, beat, message)
+                if isinstance(out, dict):
+                    text, source = out.get("text", ""), "fallback:" + out.get("source", "")
+                else:
+                    text, source = getattr(out, "text", ""), "fallback"
+            except Exception as e2:
+                text, source = "", f"both failed: {type(e).__name__}/{type(e2).__name__}"
 
         hab = getattr(_body, "habituation", None)
         perm = getattr(_body, "permanence", None)
