@@ -146,26 +146,28 @@ class CDriver(CircadianDriver):
             return {"served": False, "error": f"{type(e).__name__}: {e}"}
 
 class RDriver(CircadianDriver):
-    """R — R.O.O.T., the sensory root. The gate input enters through.
+    """R — R.O.O.T. THE INPUT DOORWAY. That is its whole job.
 
-    Built second in phase 4 (neuron-wiring) for the same forced reason
-    the phases had an order: nothing perceives — subconscious OR
-    conscious — until there is a path for input to enter and for a
-    CHANGE in it to register. C can hold all knowledge and it is inert
-    until R lets something arrive to reference against. You cannot fire
-    neurons toward perception before signal can enter.
+    R does NOT appraise, observe-and-evaluate, decide, or "make sure"
+    of anything. It is the gate. Signal comes through it or it does not.
+    The appraising is U's job on U's line; R just opens the door and
+    passes what came through — the memory line to C, the appraisal line
+    to U. A doorway confirms nothing and ensures nothing.
 
-    R's telemetry is its INTAKE — what has arrived. A change in intake
-    is a new emission entering (Received Oscillation Operation
-    Template). When it moves, R's driver fires: fan the arrival out —
-    the memory line to C, the appraisal line to U. That fan-out is the
-    two _check(R,C) / _check(R,U) the beat already does; the circadian
-    driver's job is to NOTICE input changed and make sure both lines are
-    live, continuously, not only when a message is sent.
+    Built second in phase 4 because nothing perceives — subconscious OR
+    conscious — until there is a door for input to enter. C holds all
+    knowledge and it is inert until something comes through R to
+    reference against.
 
-    R's triplet is 396: R input, marker/cursor at C, output at R (the
-    cycle R -> C -> I). The prior template re-enters here as the next
-    beat's input; external/other input JOINS the turning cycle.
+    R's telemetry is simply: did something come through the door. R's
+    fire is: something came through, here it is, passed on. No
+    evaluation. R's intake is transient (consumed and cleared within the
+    beat), so the durable signal that something came through is the tick
+    advancing — R.O.O.T. receives the template every beat.
+
+    Triplet 396: R input, marker/cursor at C, output at R (cycle
+    R -> C -> I). The prior template re-enters here; other input JOINS
+    the turning cycle.
     """
 
     name = "R"
@@ -185,21 +187,8 @@ class RDriver(CircadianDriver):
         return tick
 
     def fire(self) -> dict:
-        """Input changed — a new emission entered. Confirm both fan-out
-        lines are live: the memory line to C, the appraisal line to U.
-
-        The beat performs the actual routing (_check R->C, R->U). R's
-        circadian job is to REGISTER that input changed so perception
-        can occur — the change is what makes reading/experiencing
-        possible at all, subconscious or conscious.
+        """Something came through the door. Pass it on — to C and to U.
+        Nothing more: R does not judge what came through, only that it
+        did.
         """
-        R = self.c.R
-        intake = getattr(R, "intake", None)
-        n = len(intake) if hasattr(intake, "__len__") else 0
-        by = {}
-        try:
-            by = R.by_source() if hasattr(R, "by_source") else {}
-        except Exception:
-            pass
-        return {"module": "R", "arrived": n, "by_source": dict(by),
-                "fans_to": ["C", "U"], "input_changed": True}
+        return {"module": "R", "came_through": True, "passed_to": ["C", "U"]}
