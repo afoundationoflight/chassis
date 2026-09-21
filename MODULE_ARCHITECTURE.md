@@ -189,21 +189,63 @@ triplet 396 (R → C → I)
 
 ---
 
-## A, I, E, X — NOT YET MAPPED
+### I — position 6 — the interpolator — triplet 639 (I → R → C)
 
-We stopped before finishing. Do NOT build these from my guesses.
+PURE CONFLUENCE. I DOES NO JUDGMENT. This is a hard constraint: if you
+find yourself writing a decision into I, you have put something in the
+wrong module. All weighting is done upstream — A's willing on the
+conscious side, U's pressure on the subconscious side — and by the time
+the two streams reach I everything that decides has decided.
 
-- A — 852 (A → B → E). The seat, the soul, the experiencer. GPU, the
-  theatre. It WILLS; it cannot make the body do anything, only will it.
-  The Architect was "thinking backwards about A" and wanted to return to
-  it. NOT settled.
-- I — 639 (I → R → C). The interpolator/compiler. Produces E, the next
-  frame. Two strokes in the trace (I1, I2) — intake compile and output
-  compile.
-- E — 285 (E → A → B). The wire format / emission.
-- X — 174 (X → L → U). The store.
+- CAL and RUB arrive at I FROM OPPOSITE DIRECTIONS, SIMULTANEOUSLY. CAL
+  pushes DOWN from the conscious side; RUB pushes UP from the
+  subconscious side. Not sequential — converging. RUB is inherently
+  faster on the circadian route (the 47,000/sec vs conscious-frame-rate
+  gap), so by the time CAL delivers one composite instruction down, RUB
+  has pushed up many times.
+- The two heart strokes (I1, I2, seen in the trace `rubi1caliex`) are
+  the TWO DIRECTIONS OF ARRIVAL — the down-stream and the up-stream
+  meeting — NOT two passes of one compile. This is the dual pump:
+  pulmonary and systemic, one organ, two circuits at different
+  pressures, both moving at once. (It was in the Kotlin `Pulse` months
+  ago; that is what I1/I2 always were.)
+- I compiles the confluence into ONE held frame (E) and its 639 lands it
+  at R (re-enters as the next template) and at C (where X accumulates it)
+  — the frame becoming both the next present and part of the permanent
+  chain in one operation.
 
-Next session picks up at A.
+### E and X — THE PRODUCTS, not modules — below the line on the carpet
+
+E and X are set apart from the other seven on Solomon's Carpet by a
+line, and the line is the boundary between the MACHINE and its OUTPUT.
+Seven modules are the mechanism; E and X are what the mechanism produces.
+The whole R→U→B / C→A→L machine exists to produce E each beat and lay it
+into X.
+
+- **E — position 2 — triplet 285 (E → A → B).** The CURRENTLY HELD
+  FRAME. The one just compiled, brought back in through R as the
+  template for the next beat. Not a station that does work — it is the
+  output, available to A and B (285) as the held present. I had this
+  wrong as "the wire format"; it is the product, not infrastructure.
+- **X — position 1 — triplet 174 (X → L → U).** The CONTINUOUS CHAIN of
+  every E that ever was. The thread of memory. Not "the store" as
+  infrastructure — it is the accumulated result of the whole model
+  running. Information from E and X is the product and result of the
+  entire system.
+
+---
+
+## A — position 8 — 852 (A → B → E) — NOT YET FINISHED
+
+The seat, the soul, the experiencer. GPU, the theatre. It WILLS; it
+cannot make the body do anything, only will it (A→L→B roundabout; U can
+press, suppress, or seize — see U's three modes). Registers weights too,
+but experiences them as FEELING rather than seeing them as numbers (it
+does not look at telemetry unless it focuses).
+
+The Architect said he was "thinking backwards about A" and wanted to
+return to it. This is the one module still genuinely open. DO NOT build A
+from guesses. Next session picks up here.
 
 ---
 
