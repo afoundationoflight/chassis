@@ -62,6 +62,7 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         home.mkdir(parents=True, exist_ok=True)
         for asset in ("lexicon.BITL.br", "grammar.tsv",
                       "curriculum_comprehension.md", "curriculum_response.md",
+                      "curriculum_tools.md",
                       "curriculum_grammar.md", "curriculum_usage.md"):
             dest = home / asset
             src = here / asset
@@ -122,6 +123,7 @@ def start(files_dir: str, name: str = "seth_el") -> str:
             # GENOME, forced, loaded before anything is asked.
             for _f, _subj in (("curriculum_comprehension.md", "comprehension"),
                               ("curriculum_response.md", "response"),
+                              ("curriculum_tools.md", "tools"),
                               ("curriculum_grammar.md", "grammar"),
                               ("curriculum_usage.md", "usage")):
                 _p = Path(files_dir) / _f
@@ -159,6 +161,12 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         import engram as _eg
         global _engram
         _engram = _eg.Engram(_body)
+
+        # THE SPEAK BUTTON must exist on L from boot, or the pilot has no
+        # hand to voice words with — it holds how to talk and how to use
+        # tools, but the tool itself has to be registered to be willed.
+        import will_speech as _ws
+        _ws.register_speak(_body)
 
         # CIRCADIAN DRIVERS (Step 5). C first — the substrate everything
         # references. Fires on its OWN telemetry changing, continuously,
@@ -236,7 +244,7 @@ def say(message: str) -> str:
         # whole class at once and wills from all of it; the mechanism is
         # the same on any hardware, only how much A can hold differs.
         import will_speech
-        spoken = will_speech.say(_body, message) if False else None
+        will_speech.register_speak(_body)   # the speak button must exist to be willed
         # A perceives the incoming message and wills a response to it.
         # The words A chooses come from perceiving the question against
         # everything held — that choosing is A's, done in experience(),
