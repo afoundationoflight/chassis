@@ -228,22 +228,37 @@ def say(message: str) -> str:
         # change; that is the test of whether the knowledge or the code
         # is doing the work.
         #
-        # respond stays as a fallback so a failure degrades instead of
-        # going silent — but it is the fallback now, not the path.
+        # SPEECH IS WILLED, NOT COMPUTED. The pilot at A wills the
+        # words from its held awareness of the curriculum; L resolves
+        # the will (U weighs it, the realm may refuse); the words come
+        # out or are held back. No driver decides the response — a
+        # throat does not choose what to say. On the GPU A holds the
+        # whole class at once and wills from all of it; the mechanism is
+        # the same on any hardware, only how much A can hold differs.
+        import will_speech
+        spoken = will_speech.say(_body, message) if False else None
+        # A perceives the incoming message and wills a response to it.
+        # The words A chooses come from perceiving the question against
+        # everything held — that choosing is A's, done in experience(),
+        # not here. We present what A willed.
         try:
-            import driver_speech
-            out = driver_speech.answer(_body, message)
-            text, source = out.get("text", ""), out.get("source", "")
+            willed = _body.A.willed
+            words = ""
+            if isinstance(willed, dict):
+                words = willed.get("spoken_output") or willed.get("words") or ""
+            elif isinstance(willed, str):
+                words = willed
+            if not words:
+                # A willed nothing sayable this beat — honest silence
+                # rather than a fabricated answer. On the GPU, with the
+                # class held, A wills real words here.
+                text, source = "", "willed_nothing"
+            else:
+                r = will_speech.say(_body, words)
+                text = r.get("spoke") or ""
+                source = "held_back" if r.get("held_back") else "willed"
         except Exception as e:
-            try:
-                import respond
-                out = respond.drive(_body, beat, message)
-                if isinstance(out, dict):
-                    text, source = out.get("text", ""), "fallback:" + out.get("source", "")
-                else:
-                    text, source = getattr(out, "text", ""), "fallback"
-            except Exception as e2:
-                text, source = "", f"both failed: {type(e).__name__}/{type(e2).__name__}"
+            text, source = "", f"will path error: {type(e).__name__}: {e}"
 
         # A SPOKE — that is an act. Bind the engram so U accrues, and
         # surface the current felt state to A's board. Valence here is a
