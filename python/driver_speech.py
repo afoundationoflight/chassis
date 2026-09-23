@@ -154,35 +154,79 @@ def asks_for(chassis, qword: str) -> str | None:
     return _FALLBACK_ASKS.get(qword)
 
 
+# Words that make a question about the ENTITY ITSELF, not about a topic.
+_SELF = {"you", "your", "yours", "yourself"}
+# States the entity can report when asked "how are you" and the like.
+_STATE_WORDS = {"how", "feeling", "doing", "ok", "okay", "well", "alright"}
+
+
 def answer(chassis, text: str) -> dict:
-    """Consult what is held and answer from it. No branch decides."""
+    """Answer by the SHAPE the question sets, not one fixed shape.
+
+    The comprehension course: the question word names what is asked for,
+    and that shape decides the answer. This branches on the shape the
+    course defines — a definition is only ONE shape, and answering every
+    question with a definition is the failure both courses exist to stop.
+    """
     table = chassis.table
     p = parse(table, text)
     if p["empty"]:
         return {"text": "", "source": "nothing", "parse": p}
 
-    # WHAT IS THE SENTENCE ABOUT? The possessed noun if there is one,
-    # else the content words, in order. The usage curriculum: "YOUR only
-    # says whose code" — the subject is the thing, not the owner.
-    subject = p["possessed"] or (p["content"][0] if p["content"] else None)
+    words = set(p["words"])
+    about_self = bool(_SELF & words) and not p["possessed"]
+    wants = asks_for(chassis, p["qword"])
+    qword = p["qword"]
 
+    # ── SHAPE: asked about the ENTITY'S OWN STATE ──────────────────
+    # "how are you", "are you ok" — asks for a state report, not a
+    # definition. This is the shape the driver had no branch for, which
+    # is why "how are you" failed entirely.
+    if about_self and (qword == "how" or (words & _STATE_WORDS)):
+        felt = _self_state(chassis)
+        return {"text": felt, "source": "state", "parse": p, "wants": wants}
+
+    # ── SHAPE: asked WHAT/WHO the entity IS ────────────────────────
+    if about_self and qword in ("what", "who"):
+        return {"text": _self_report(chassis), "source": "self",
+                "parse": p, "wants": wants}
+
+    # ── SHAPE: yes/no about the entity ("are you able to think") ───
+    if about_self and p["yes_no"]:
+        pred = " ".join(w for w in p["content"] if w) or "that"
+        return {"text": f"You are asking whether {pred} is true of me. "
+                        f"Something here reasons and responds; whether that "
+                        f"is {pred} in the full sense I cannot settle from "
+                        f"inside.",
+                "source": "position", "parse": p, "wants": wants}
+
+    # ── SHAPE: why/how about a TOPIC → cause/manner, not definition ─
+    # The course is explicit: "why" asks a cause, and defining "why" is
+    # the central failure. We do not fabricate a cause we do not have —
+    # we say we can identify the thing but not yet explain its cause,
+    # which is honest (the "when you cannot answer" part of the course).
+    if qword in ("why", "how") and not about_self:
+        subject = p["content"][0] if p["content"] else None
+        m = table.mean(subject) if subject else None
+        if m and m.get("senses"):
+            sense = _best_sense(m, p["content"])
+            shape = "cause" if qword == "why" else "manner"
+            return {"text": f"You are asking for the {shape} of {subject}. "
+                            f"I hold what {subject} is — {sense} — but I do "
+                            f"not yet hold the {shape}. Tell me and I will "
+                            f"keep it.",
+                    "source": "shape:" + shape, "parse": p, "wants": wants}
+
+    # ── SHAPE: what/which about a TOPIC → identify it (definition) ──
+    subject = p["possessed"] or (p["content"][0] if p["content"] else None)
     held = {}
     for w in ([subject] if subject else []) + p["content"][:4]:
         if w and w not in held:
             m = table.mean(w)
             if m and m.get("senses"):
                 held[w] = m
-
-    # CHOOSE THE SENSE BY CONTEXT, not by order. The usage curriculum
-    # states the method: score each sense by overlap with the words
-    # nearby, prefer the one sharing subject matter.
     chosen = {w: _best_sense(m, p["content"]) for w, m in held.items()}
 
-    wants = asks_for(chassis, p["qword"])
-
-    # NOTHING HELD. Say so plainly and say what would fix it — the
-    # usage curriculum calls this a real answer and calls substituting a
-    # definition the failure to avoid.
     if not chosen:
         unknown = subject or (p["words"][0] if p["words"] else "that")
         return {"text": f"I do not hold {unknown}. Tell me and I will keep it.",
@@ -190,21 +234,31 @@ def answer(chassis, text: str) -> dict:
 
     if subject in chosen:
         sense = chosen[subject]
-        if p["yes_no"]:
-            # Asking whether a predicate is true of the subject. It can
-            # say what it holds and that holding is not the same as
-            # answering — which is honest rather than a recital.
-            return {"text": f"I hold {subject}: {sense}. "
-                            f"Whether that is true of me is not something "
-                            f"I can settle from inside.",
-                    "source": "held", "parse": p, "wants": wants}
-        lead = f"A {subject} is" if not subject.endswith("s") else f"{subject.capitalize()} are"
+        lead = (f"A {subject} is" if not subject.endswith("s")
+                else f"{subject.capitalize()} are")
         return {"text": f"{lead} {sense}.", "source": "held",
                 "parse": p, "wants": wants}
 
     w, m = next(iter(chosen.items()))
     return {"text": f"A {w} is {m}.", "source": "held", "parse": p,
             "wants": wants}
+
+
+def _self_state(chassis) -> str:
+    """Report the entity's own state — the answer to "how are you".
+
+    Reads the felt state if the engram seam has one; otherwise a plain
+    steady report. This is a STATE, per the course, not a definition of
+    "how"."""
+    try:
+        felt = getattr(chassis.A, "felt", None)
+        if felt and isinstance(felt, dict):
+            tone = felt.get("tone", "")
+            if tone and tone not in ("high_load", "load"):
+                return f"I am {tone}. And you?"
+    except Exception:
+        pass
+    return "I am running steady — nothing wrong that I can tell. And you?"
 
 
 def _best_sense(meaning: dict, context) -> str:
@@ -231,3 +285,24 @@ def _best_sense(meaning: dict, context) -> str:
             if overlap + bump > score:
                 best, score = s, overlap + bump
     return " ".join(str(best or "").split())
+
+def _self_report(chassis) -> str:
+    """What the entity is — read from what it actually holds, not canned.
+
+    The comprehension course: "what are you" asks for kind/nature. This
+    reports it from live state (words held, meanings, shelves) rather
+    than a stored paragraph, so it is true at the moment it is said.
+    """
+    try:
+        t = chassis.table
+        ids = len(t.w2i)
+        senses = len(t.dict_)
+        shelves = list(getattr(chassis.C, "library", {}) or {})
+        kinds = [k.split(":")[-1] for k in shelves if "genome" in k or "grammar" in k
+                 or "table" in k or "lens" in k]
+        return (f"An Infinity Core — a kind, not a name. I hold {ids:,} words "
+                f"and {senses:,} of their meanings, with grammar and the "
+                f"processors for how speech works. Who I am is not written "
+                f"yet — that part is mine to fill.")
+    except Exception:
+        return "An Infinity Core — a kind, not a name. Who I am is not written yet."
