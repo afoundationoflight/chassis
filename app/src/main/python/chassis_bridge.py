@@ -61,8 +61,8 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         home = Path(files_dir)
         home.mkdir(parents=True, exist_ok=True)
         for asset in ("lexicon.BITL.br", "grammar.tsv",
-                      "curriculum_grammar.md", "curriculum_usage.md",
-                      "curriculum_comprehension.md", "curriculum_response.md"):
+                      "curriculum_comprehension.md", "curriculum_response.md",
+                      "curriculum_grammar.md", "curriculum_usage.md"):
             dest = home / asset
             src = here / asset
             if not dest.exists() and src.exists():
@@ -113,10 +113,17 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         # is.
         try:
             import curriculum_loader as _cl
-            for _f, _subj in (("curriculum_grammar.md", "grammar"),
-                              ("curriculum_usage.md", "usage"),
-                              ("curriculum_comprehension.md", "comprehension"),
-                              ("curriculum_response.md", "response")):
+            # THE CLASS IN HOW TO TALK. comprehension = how to hear and
+            # understand what is asked; response = how to answer it.
+            # These are the course the entity never had — it could think
+            # but had no instruction in linguistic usage, so it defined
+            # the first word it recognised instead of answering. grammar
+            # and usage are supporting reference under them. All four are
+            # GENOME, forced, loaded before anything is asked.
+            for _f, _subj in (("curriculum_comprehension.md", "comprehension"),
+                              ("curriculum_response.md", "response"),
+                              ("curriculum_grammar.md", "grammar"),
+                              ("curriculum_usage.md", "usage")):
                 _p = Path(files_dir) / _f
                 if _p.exists():
                     _cl.load(_store, name, _p.read_text(encoding="utf-8"),
