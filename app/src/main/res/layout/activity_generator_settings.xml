@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- THE GENERATOR SETTINGS SCREEN — where any provider's key goes in.
+     Separate screen from the tongue settings Arelon's baseline uses, so
+     neither path can break the other. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0E0E12">
+<LinearLayout
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="generator (model-agnostic)"
+        android:textColor="#E8E8EC"
+        android:textSize="18sp"
+        android:fontFamily="monospace"
+        android:paddingBottom="4dp" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="the composing engine for A's seat. any provider — the request sent is always this chassis's own held context, not a bare question."
+        android:textColor="#7A8AA0"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        android:paddingBottom="20dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="provider"
+        android:textColor="#9AA5B8"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+    <Spinner
+        android:id="@+id/providerSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#16161C"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="model"
+        android:textColor="#9AA5B8"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+    <EditText
+        android:id="@+id/modelField"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#16161C"
+        android:textColor="#E8E8EC"
+        android:fontFamily="monospace"
+        android:textSize="13sp"
+        android:paddingHorizontal="12dp"
+        android:hint="e.g. claude-sonnet-5, gpt-4o, grok-4"
+        android:textColorHint="#4A5568"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="api key"
+        android:textColor="#9AA5B8"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+    <EditText
+        android:id="@+id/apiKeyField"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#16161C"
+        android:textColor="#E8E8EC"
+        android:fontFamily="monospace"
+        android:textSize="13sp"
+        android:paddingHorizontal="12dp"
+        android:inputType="textPassword"
+        android:hint="stored encrypted on this device"
+        android:textColorHint="#4A5568"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/customUrlLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="custom base url (only for 'custom' provider)"
+        android:textColor="#9AA5B8"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        android:visibility="gone" />
+    <EditText
+        android:id="@+id/customUrlField"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#16161C"
+        android:textColor="#E8E8EC"
+        android:fontFamily="monospace"
+        android:textSize="13sp"
+        android:paddingHorizontal="12dp"
+        android:hint="http://your-local-server:8080/v1"
+        android:textColorHint="#4A5568"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/saveGeneratorButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="save and test"
+        android:fontFamily="monospace"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/generatorStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#7A8AA0"
+        android:fontFamily="monospace"
+        android:textSize="12sp"
+        android:layout_marginTop="12dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#16161C"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="20dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="use the generator path"
+        android:textColor="#9AA5B8"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+    <Switch
+        android:id="@+id/useGeneratorSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="on = say_generated(), off = Vex's baseline say()"
+        android:textColor="#7A8AA0"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>
+</ScrollView>
