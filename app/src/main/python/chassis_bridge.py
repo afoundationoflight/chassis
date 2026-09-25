@@ -24,6 +24,7 @@ from pathlib import Path
 
 _body = None
 _store = None
+_generator = None   # set via configure_generator(); None = generator not wired
 _root = None
 _resident_state = None
 _heart = None
@@ -204,6 +205,46 @@ def start(files_dir: str, name: str = "seth_el") -> str:
     except Exception as e:
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
                            "trace": traceback.format_exc()[-1200:]})
+
+
+def configure_generator(provider: str, api_key: str, model: str,
+                        base_url: str = "") -> str:
+    """Wire the generative engine. Model-agnostic — provider picks the
+    request shape; the content sent is always the chassis's own held
+    context. Separate path from say(); does not touch the existing
+    responder Vex is keeping as baseline.
+    """
+    import json
+    global _generator
+    try:
+        import generator as _gen
+        url = base_url or _gen.PROVIDERS.get(provider, "")
+        if not url:
+            return json.dumps({"ok": False, "error": f"no base_url for provider {provider!r}"})
+        _generator = _gen.Generator(base_url=url, api_key=api_key, model=model)
+        return json.dumps({"ok": True, "provider": provider, "model": model})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
+
+
+def say_generated(message: str) -> str:
+    """THE NEW PATH. A perceives via the real tick, then the generator
+    COMPOSES from the chassis's own held context, and A wills the
+    result through the real speak tool. Separate from say() so it can
+    be proven independently before anything replaces the baseline.
+    """
+    import json
+    if _generator is None:
+        return json.dumps({"ok": False, "error": "generator not configured — call configure_generator first"})
+    if _body is None:
+        return json.dumps({"ok": False, "error": "not booted"})
+    try:
+        _body.tick(message=message)   # A perceives, felt state updates, real tick
+        import generator as _gen
+        r = _gen.compose(_body, message, _generator)
+        return json.dumps(r)
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
 
 
 def say(message: str) -> str:
