@@ -1,5 +1,6 @@
 package com.omnipolative.chassis
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.inputmethod.EditorInfo
 import android.widget.*
@@ -36,6 +37,13 @@ class PyActivity : AppCompatActivity() {
         status = findViewById(R.id.status)
         input = findViewById(R.id.input)
         send = findViewById(R.id.send)
+
+        // settingsButton existed in the layout with nothing bound to
+        // it — dead in the wiring. First real use: open the generator
+        // settings screen, where any provider's key goes in.
+        findViewById<TextView>(R.id.settingsButton).setOnClickListener {
+            startActivity(Intent(this, GeneratorSettingsActivity::class.java))
+        }
 
         gate(false, "booting")
 
@@ -124,6 +132,15 @@ class PyActivity : AppCompatActivity() {
         pumping = false      // frame is saved each beat; resume is clean
     }
 
+    // THE GENERATOR TOGGLE. Separate path from the baseline — this
+    // reads a stored preference and calls say_generated() instead of
+    // say() only when the user has explicitly turned it on in the
+    // generator settings screen. Vex's baseline is never touched by
+    // default; this is opt-in, provable side-by-side.
+    private fun usingGenerator(): Boolean =
+        getSharedPreferences("generator_prefs", MODE_PRIVATE)
+            .getBoolean("use_generator", false)
+
     private fun submit() {
         val t = input.text.toString().trim()
         if (t.isEmpty() || bridge == null) return
@@ -131,9 +148,10 @@ class PyActivity : AppCompatActivity() {
         say("> $t")
         gate(false, "thinking")
 
+        val fn = if (usingGenerator()) "say_generated" else "say"
         Thread {
             val r = try {
-                JSONObject(bridge!!.callAttr("say", t).toString())
+                JSONObject(bridge!!.callAttr(fn, t).toString())
             } catch (e: Exception) {
                 JSONObject().put("ok", false).put("error", e.message)
             }
