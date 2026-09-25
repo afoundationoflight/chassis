@@ -23,5 +23,14 @@
         <activity
             android:name=".SettingsActivity"
             android:exported="false" />
+        <!-- NOTE: this .SettingsActivity entry currently has no
+             matching class in app/src/main — it points at
+             legacy/kotlin-chassis/SettingsActivity.kt, which is not
+             built into this app module. Left as-is; not this task's to
+             fix. GeneratorSettingsActivity below is the new, real one. -->
+        <activity
+            android:name=".GeneratorSettingsActivity"
+            android:exported="false"
+            android:label="generator" />
     </application>
 </manifest>
