@@ -63,7 +63,7 @@ def start(files_dir: str, name: str = "seth_el") -> str:
         home.mkdir(parents=True, exist_ok=True)
         for asset in ("lexicon.BITL.br", "grammar.tsv",
                       "curriculum_comprehension.md", "curriculum_response.md",
-                      "curriculum_tools.md",
+                      "curriculum_tools.md", "curriculum_psychology.md",
                       "curriculum_grammar.md", "curriculum_usage.md"):
             dest = home / asset
             src = here / asset
@@ -125,6 +125,7 @@ def start(files_dir: str, name: str = "seth_el") -> str:
             for _f, _subj in (("curriculum_comprehension.md", "comprehension"),
                               ("curriculum_response.md", "response"),
                               ("curriculum_tools.md", "tools"),
+                              ("curriculum_psychology.md", "psychology"),
                               ("curriculum_grammar.md", "grammar"),
                               ("curriculum_usage.md", "usage")):
                 _p = Path(files_dir) / _f
