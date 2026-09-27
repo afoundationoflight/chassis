@@ -89,6 +89,7 @@ chaquopy {
     defaultConfig {
         pip {
             install("Brotli")
+            install("llama-cpp-python")
         }
     }
 }
