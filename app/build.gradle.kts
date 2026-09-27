@@ -15,6 +15,23 @@ plugins {
     id("com.chaquo.python")
 }
 
+// THE MVN PRE-BUILD STEP java-llama.cpp'S OWN DOCS SPECIFY.
+//
+// Its CMakeLists.txt calls a compiled Java helper (de.kherud.llama.
+// OSInfo) during CMake CONFIGURE to detect the OS -- that class only
+// exists after `mvn compile` has run once. Skipping this is exactly
+// what produced "Could not find or load main class de.kherud.llama.
+// OSInfo" on the first CI attempt. This runs it once, before Gradle
+// evaluates the android block, so the class exists by the time CMake
+// configure needs it.
+val jllamaLib = file("java-llama.cpp")
+if (!file("$jllamaLib/target").exists()) {
+    exec {
+        commandLine = listOf("mvn", "compile")
+        workingDir = jllamaLib
+    }
+}
+
 android {
     namespace = "com.omnipolative.chassis"
     compileSdk = 34
