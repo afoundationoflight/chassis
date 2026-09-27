@@ -89,8 +89,6 @@ chaquopy {
     defaultConfig {
         pip {
             install("Brotli")
-            install("numpy==1.26.4")
-            install("llama-cpp-python")
         }
     }
 }
