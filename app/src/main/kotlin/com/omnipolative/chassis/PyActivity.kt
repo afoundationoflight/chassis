@@ -45,6 +45,34 @@ class PyActivity : AppCompatActivity() {
             startActivity(Intent(this, GeneratorSettingsActivity::class.java))
         }
 
+        // THE LOCAL TOY-MODEL TEST BUTTON. Separate path from send —
+        // calls say_local() directly, which runs TinyStories-33M fully
+        // on-device via the real JNI binding. First tap downloads the
+        // ~70MB GGUF once (needs the wifi the plane has); after that,
+        // offline. Does not touch send()/submit() or either toggle.
+        findViewById<Button>(R.id.localButton).setOnClickListener {
+            val t = input.text.toString().trim()
+            if (t.isEmpty() || bridge == null) return@setOnClickListener
+            input.setText("")
+            say("> $t  [local]")
+            gate(false, "loading local model (first run downloads ~70MB)…")
+            Thread {
+                val r = try {
+                    JSONObject(bridge!!.callAttr("say_local", t).toString())
+                } catch (e: Exception) {
+                    JSONObject().put("ok", false).put("error", e.message)
+                }
+                runOnUiThread {
+                    if (r.optBoolean("ok")) {
+                        say(r.optString("text"))
+                    } else {
+                        say("(local model error: ${r.optString("error")})")
+                    }
+                    gate(true, "")
+                }
+            }.start()
+        }
+
         gate(false, "booting")
 
         Thread {
