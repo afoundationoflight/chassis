@@ -24,6 +24,7 @@ from pathlib import Path
 
 _body = None
 _store = None
+_files_dir = None
 _generator = None   # set via configure_generator(); None = generator not wired
 _root = None
 _resident_state = None
@@ -34,6 +35,8 @@ _drivers = []
 
 
 def start(files_dir: str, name: str = "seth_el") -> str:
+    global _files_dir
+    _files_dir = files_dir
     """Boot a body. Called once, from the Activity.
 
     files_dir is app-private storage. The assets are read-only inside
@@ -224,6 +227,22 @@ def configure_generator(provider: str, api_key: str, model: str,
             return json.dumps({"ok": False, "error": f"no base_url for provider {provider!r}"})
         _generator = _gen.Generator(base_url=url, api_key=api_key, model=model)
         return json.dumps({"ok": True, "provider": provider, "model": model})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
+
+
+def say_local(message: str) -> str:
+    """THE TOY-MODEL TEST, LIVE ON DEVICE. TinyStories-33M via llama.cpp,
+    no key, no network after first download. Separate path — does not
+    touch say() or say_generated()."""
+    import json
+    if _body is None:
+        return json.dumps({"ok": False, "error": "not booted"})
+    try:
+        _body.tick(message=message)
+        import local_tongue
+        r = local_tongue.compose(_body, message, _files_dir)
+        return json.dumps(r)
     except Exception as e:
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}"})
 
