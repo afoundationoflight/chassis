@@ -30,10 +30,31 @@ android {
         // here so the emulator works for anyone developing on a laptop.
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
 
+        // THE LOCAL TONGUE. java-llama.cpp (kherud, MIT) is a real JNI
+        // binding to llama.cpp, checked in as a git submodule at
+        // app/java-llama.cpp. Its own docs' Android section is exactly
+        // this: declare it as an externalNativeBuild CMake target, add
+        // its Java sources to this module's source set. This is a
+        // genuine native build stage, not a pip install — first CI run
+        // on this may need a debugging pass, and that is expected for
+        // an NDK addition, not a sign something is wrong with the
+        // approach.
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DLLAMA_CURL=OFF")
+            }
+        }
+    }
 
+    externalNativeBuild {
+        cmake {
+            path = file("java-llama.cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
+    sourceSets["main"].java.srcDirs("java-llama.cpp/src/main/java")
 
     // THE STORES SHIP COMPRESSED, AND THAT COSTS NOTHING.
     //
