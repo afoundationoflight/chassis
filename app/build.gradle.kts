@@ -25,6 +25,25 @@ plugins {
 // evaluates the android block, so the class exists by the time CMake
 // configure needs it.
 val jllamaLib = file("java-llama.cpp")
+
+// PATCH: CliParameters.java has `Map<String, @Nullable String>` — a
+// type-use position this project's javac/annotation setup does not
+// accept, failing with "annotation @Nullable not applicable in this
+// type context". The @Nullable here is documentation only; nothing
+// downstream depends on the annotation itself. Rather than edit the
+// submodule's checked-out source directly (which git would then see
+// as an uncommitted local change every checkout), this rewrites the
+// one line in place, idempotently, before compilation each build.
+val cliParams = file("$jllamaLib/src/main/java/de/kherud/llama/CliParameters.java")
+if (cliParams.exists()) {
+    val original = cliParams.readText()
+    val patched = original.replace(
+        "final Map<String, @Nullable String> parameters = new HashMap<>();",
+        "final Map<String, String> parameters = new HashMap<>();"
+    )
+    if (patched != original) cliParams.writeText(patched)
+}
+
 if (!file("$jllamaLib/target").exists()) {
     exec {
         commandLine = listOf("mvn", "compile")
