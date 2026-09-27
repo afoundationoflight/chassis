@@ -19,6 +19,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: verify maven is present (java-llama.cpp needs it before CMake configure)
+        run: mvn -version
       - uses: android-actions/setup-android@v3
         with:
           # THE 'tools' PACKAGE NO LONGER EXISTS in Google's SDK
