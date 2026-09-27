@@ -16,9 +16,28 @@ MODEL_FILE = "tinystories-33m.gguf"
 
 
 def _ensure_model(files_dir: str) -> str:
+    """Download once. A partial file from an interrupted layover-wifi
+    download must not look like a valid model on the next attempt —
+    write to a temp name and only rename on full success, and set a
+    real timeout so a dead connection fails fast instead of hanging
+    the thread silently forever."""
     path = os.path.join(files_dir, MODEL_FILE)
-    if not os.path.exists(path):
-        urllib.request.urlretrieve(GGUF_URL, path)
+    if os.path.exists(path):
+        return path
+    tmp = path + ".part"
+    try:
+        req = urllib.request.Request(GGUF_URL)
+        with urllib.request.urlopen(req, timeout=60) as resp, open(tmp, "wb") as f:
+            while True:
+                chunk = resp.read(1024 * 256)
+                if not chunk:
+                    break
+                f.write(chunk)
+        os.rename(tmp, path)
+    except Exception as e:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise RuntimeError(f"model download failed: {type(e).__name__}: {e}")
     return path
 
 
