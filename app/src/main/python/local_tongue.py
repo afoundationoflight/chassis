@@ -1,12 +1,12 @@
-"""THE LOCAL TONGUE — TinyStories-33M, on-device, no key, no network.
+"""THE LOCAL TONGUE — calls through to Kotlin's LocalTongue (real JNI
+binding to llama.cpp via java-llama.cpp), not a Python llama-cpp
+package. That package cannot cross-compile through Chaquopy for
+Android; this reaches the native binding the correct way, through
+Chaquopy's Java interop.
 
-Same compose() contract as generator.py, but the engine is a GGUF file
-running via llama-cpp-python, fully local. First run downloads the
-~70MB GGUF once; every run after is offline.
-
-This is the toy-model test, live in the actual app instead of a
-sandbox: does 33M params, handed our comprehension course as context,
-follow the shape of a question instead of just producing fluent noise.
+Same compose() contract as generator.py — the API-backed one. This is
+the on-device version: TinyStories-33M GGUF, downloaded once, then
+fully offline, no key, no network.
 """
 from __future__ import annotations
 import os, urllib.request
@@ -14,7 +14,6 @@ import os, urllib.request
 GGUF_URL = "https://huggingface.co/QuantFactory/TinyStories-33M-GGUF/resolve/main/TinyStories-33M.Q8_0.gguf"
 MODEL_FILE = "tinystories-33m.gguf"
 
-_llm = None
 
 def _ensure_model(files_dir: str) -> str:
     path = os.path.join(files_dir, MODEL_FILE)
@@ -22,23 +21,31 @@ def _ensure_model(files_dir: str) -> str:
         urllib.request.urlretrieve(GGUF_URL, path)
     return path
 
-def load(files_dir: str):
-    global _llm
-    if _llm is None:
-        from llama_cpp import Llama
-        _llm = Llama(model_path=_ensure_model(files_dir), n_ctx=512, verbose=False)
-    return _llm
 
 def compose(chassis, message: str, files_dir: str) -> dict:
-    llm = load(files_dir)
+    """Reach the real JNI-bound model through Chaquopy's Java interop."""
+    try:
+        from java import jclass
+    except ImportError:
+        return {"ok": False, "text": "", "error": "not running under Chaquopy"}
+
+    model_path = _ensure_model(files_dir)
+    LocalTongue = jclass("com.omnipolative.chassis.LocalTongue")
+
+    if not LocalTongue.isLoaded():
+        ok = LocalTongue.load(model_path)
+        if not ok:
+            return {"ok": False, "text": "", "error": f"model file missing at {model_path}"}
+
     system = ("Every sentence has a subject and a predicate. A question word "
              "(what/why/how) tells you what is being asked for. Answer what "
              "was actually asked.")
     prompt = f"{system}\n\nQuestion: {message}\nAnswer:"
-    out = llm(prompt, max_tokens=60, stop=["\n\n"])
-    words = out["choices"][0]["text"].strip()
+
+    words = str(LocalTongue.generate(prompt, 60)).strip()
     if not words:
         return {"ok": False, "text": "", "error": "empty generation"}
+
     import will_speech
     spoken = will_speech.say(chassis, words)
     return {"ok": True, "text": spoken.get("spoke") or words,
