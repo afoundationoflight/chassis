@@ -52,7 +52,18 @@ class PyActivity : AppCompatActivity() {
         // offline. Does not touch send()/submit() or either toggle.
         findViewById<Button>(R.id.localButton).setOnClickListener {
             val t = input.text.toString().trim()
-            if (t.isEmpty() || bridge == null) return@setOnClickListener
+            // NEVER SILENTLY DO NOTHING. The prior version returned with
+            // zero feedback on an empty field or a not-yet-ready bridge
+            // — indistinguishable from the button being broken. Every
+            // path now shows something on screen.
+            if (bridge == null) {
+                say("(not booted yet — wait a moment and try again)")
+                return@setOnClickListener
+            }
+            if (t.isEmpty()) {
+                say("(type something first, then tap local)")
+                return@setOnClickListener
+            }
             input.setText("")
             say("> $t  [local]")
             gate(false, "loading local model (first run downloads ~70MB)…")
