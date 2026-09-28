@@ -98,7 +98,17 @@ def compose(chassis, message: str, files_dir: str) -> dict:
         return {"ok": False, "text": "", "error": "not running under Chaquopy"}
 
     model_path = _ensure_model(files_dir)
-    LocalTongue = jclass("com.omnipolative.chassis.LocalTongue")
+    # A Kotlin `object` (singleton) is not a Java static class the way
+    # jclass() naively assumes — Kotlin compiles it to a class with an
+    # INSTANCE field holding the one real object, and every method call
+    # has to go through that instance. Calling LocalTongue.isLoaded()
+    # directly on the class reached for an unbound instance method with
+    # no instance, which is exactly the TypeError that surfaced: "must
+    # be called with ... instance as first argument (got nothing
+    # instead)". The model itself loaded fine; only this call shape was
+    # wrong.
+    LocalTongueClass = jclass("com.omnipolative.chassis.LocalTongue")
+    LocalTongue = LocalTongueClass.INSTANCE
 
     if not LocalTongue.isLoaded():
         ok = LocalTongue.load(model_path)
