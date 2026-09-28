@@ -9,7 +9,7 @@ the on-device version: TinyStories-33M GGUF, downloaded once, then
 fully offline, no key, no network.
 """
 from __future__ import annotations
-import os, urllib.request
+import os, time, urllib.error, urllib.request
 
 # VERIFIED, not remembered. The previous URL (QuantFactory/TinyStories-33M-GGUF)
 # was written from memory and returned HTTP 401 because that repo does not
@@ -48,6 +48,14 @@ def _ensure_model(files_dir: str) -> str:
     last_error = None
 
     for attempt in range(5):
+        if attempt > 0:
+            # THE MISSING PIECE. Five retries fired back-to-back in under
+            # a second give a flaky or absent connection zero chance to
+            # come back — that is not a real retry, it is failing five
+            # times fast and calling it five attempts. Real backoff:
+            # 2s, 4s, 8s, 16s between tries, so a connection that returns
+            # within half a minute actually gets caught.
+            time.sleep(2 ** attempt)
         try:
             existing = os.path.getsize(tmp) if os.path.exists(tmp) else 0
             req = urllib.request.Request(GGUF_URL)
@@ -86,6 +94,17 @@ def _ensure_model(files_dir: str) -> str:
 
     if os.path.exists(tmp):
         os.remove(tmp)
+    # NAME THE ACTUAL PROBLEM. "No address associated with hostname" is
+    # DNS failing to resolve — the phone's network is off, too weak, or
+    # has no working DNS at that moment. That is not something code can
+    # fix; no retry count changes an absent connection. Saying so
+    # plainly here means the error on screen is diagnosable without
+    # guessing whether it is the app or the wifi.
+    if isinstance(last_error, urllib.error.URLError) and "hostname" in str(last_error).lower():
+        raise RuntimeError(
+            "no network connection — the phone could not reach the "
+            "internet after 5 tries over ~30s. this is not an app bug; "
+            "reconnect to wifi/data and try again")
     raise RuntimeError(f"model download failed after 5 attempts: "
                        f"{type(last_error).__name__}: {last_error}")
 
