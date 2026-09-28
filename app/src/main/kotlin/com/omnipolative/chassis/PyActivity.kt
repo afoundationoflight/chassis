@@ -66,7 +66,7 @@ class PyActivity : AppCompatActivity() {
             }
             input.setText("")
             say("> $t  [local]")
-            gate(false, "loading local model (first run downloads ~70MB)…")
+            gate(false, "loading local model (first run downloads ~258MB — keep the app open, may take a few minutes)…")
             Thread {
                 val r = try {
                     JSONObject(bridge!!.callAttr("say_local", t).toString())
