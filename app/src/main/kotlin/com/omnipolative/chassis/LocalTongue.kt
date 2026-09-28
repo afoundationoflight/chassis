@@ -39,7 +39,7 @@ object LocalTongue {
         val m = model ?: return ""
         val params = InferenceParameters(prompt)
             .setTemperature(0.7f)
-            .setStopStrings("\n\n")
+            .setStopStrings("<|im_end|>", "<|im_start|>")
         val sb = StringBuilder()
         var n = 0
         for (output in m.generate(params)) {
