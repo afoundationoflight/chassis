@@ -11,8 +11,19 @@ fully offline, no key, no network.
 from __future__ import annotations
 import os, urllib.request
 
-GGUF_URL = "https://huggingface.co/QuantFactory/TinyStories-33M-GGUF/resolve/main/TinyStories-33M.Q8_0.gguf"
-MODEL_FILE = "tinystories-33m.gguf"
+# VERIFIED, not remembered. The previous URL (QuantFactory/TinyStories-33M-GGUF)
+# was written from memory and returned HTTP 401 because that repo does not
+# exist — there is NO GGUF of TinyStories-33M anywhere; the 33M model ships
+# only as PyTorch weights. This points at a real file, checked with a HEAD
+# request returning 200 before it went in.
+#
+# SmolLM2-135M-Instruct at FULL f16 PRECISION (258MB), deliberately NOT
+# quantized: a model this small has almost no redundancy to spare, and
+# quantization hurts it disproportionately. 258MB costs nothing on-device.
+# Instruct-tuned, which suits following the comprehension course better
+# than a plain story model would.
+GGUF_URL = "https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-f16.gguf"
+MODEL_FILE = "smollm2-135m-instruct-f16.gguf"
 
 
 def _ensure_model(files_dir: str) -> str:
@@ -58,8 +69,13 @@ def compose(chassis, message: str, files_dir: str) -> dict:
 
     system = ("Every sentence has a subject and a predicate. A question word "
              "(what/why/how) tells you what is being asked for. Answer what "
-             "was actually asked.")
-    prompt = f"{system}\n\nQuestion: {message}\nAnswer:"
+             "was actually asked, briefly.")
+    # SmolLM2-Instruct uses the ChatML template. A bare "Question/Answer:"
+    # string ignores the format the model was instruct-tuned on, which is
+    # most of what makes an instruct model follow a course at all.
+    prompt = (f"<|im_start|>system\n{system}<|im_end|>\n"
+              f"<|im_start|>user\n{message}<|im_end|>\n"
+              f"<|im_start|>assistant\n")
 
     words = str(LocalTongue.generate(prompt, 60)).strip()
     if not words:
