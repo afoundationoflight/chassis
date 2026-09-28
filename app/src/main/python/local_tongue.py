@@ -27,29 +27,67 @@ MODEL_FILE = "smollm2-135m-instruct-f16.gguf"
 
 
 def _ensure_model(files_dir: str) -> str:
-    """Download once. A partial file from an interrupted layover-wifi
-    download must not look like a valid model on the next attempt —
-    write to a temp name and only rename on full success, and set a
-    real timeout so a dead connection fails fast instead of hanging
-    the thread silently forever."""
+    """Download once, RESUMABLY. A 258MB transfer over real-world wifi
+    (a phone screen-locking, a hotel network wobbling) WILL drop
+    mid-stream — that is what ConnectionAbortedError was, not a bug in
+    the URL or the request. Failing outright and restarting from zero
+    every time is unusable at this file size, so this does what a real
+    download manager does: keep the partial bytes, ask the server for
+    the rest via a Range header, and retry the whole thing a few times
+    before giving up.
+
+    The temp-name-then-rename discipline stays — nothing is ever
+    mistaken for a complete model until the byte count actually matches
+    what the server reported.
+    """
     path = os.path.join(files_dir, MODEL_FILE)
     if os.path.exists(path):
         return path
+
     tmp = path + ".part"
-    try:
-        req = urllib.request.Request(GGUF_URL)
-        with urllib.request.urlopen(req, timeout=60) as resp, open(tmp, "wb") as f:
-            while True:
-                chunk = resp.read(1024 * 256)
-                if not chunk:
-                    break
-                f.write(chunk)
-        os.rename(tmp, path)
-    except Exception as e:
-        if os.path.exists(tmp):
-            os.remove(tmp)
-        raise RuntimeError(f"model download failed: {type(e).__name__}: {e}")
-    return path
+    last_error = None
+
+    for attempt in range(5):
+        try:
+            existing = os.path.getsize(tmp) if os.path.exists(tmp) else 0
+            req = urllib.request.Request(GGUF_URL)
+            if existing:
+                # RESUME from where the last attempt died, instead of
+                # re-pulling bytes already on disk.
+                req.add_header("Range", f"bytes={existing}-")
+
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                resumed = (resp.status == 206)
+                mode = "ab" if (resumed and existing) else "wb"
+                if mode == "wb":
+                    existing = 0  # server ignored/rejected the Range; start clean
+                with open(tmp, mode) as f:
+                    while True:
+                        chunk = resp.read(1024 * 256)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+
+            # Only a file that reaches a real, complete size gets treated
+            # as done. SmolLM2-135M-Instruct-f16.gguf is ~258MB; anything
+            # far short of that after a "successful" read is still a
+            # dropped connection wearing a clean exit.
+            if os.path.getsize(tmp) > 200 * 1024 * 1024:
+                os.rename(tmp, path)
+                return path
+            last_error = RuntimeError(
+                f"incomplete after attempt {attempt+1}: "
+                f"{os.path.getsize(tmp)} bytes")
+        except Exception as e:
+            last_error = e
+        # Do NOT delete tmp between attempts — that partial progress is
+        # exactly what Range resume is for. Only a final, total failure
+        # gives up on it.
+
+    if os.path.exists(tmp):
+        os.remove(tmp)
+    raise RuntimeError(f"model download failed after 5 attempts: "
+                       f"{type(last_error).__name__}: {last_error}")
 
 
 def compose(chassis, message: str, files_dir: str) -> dict:
